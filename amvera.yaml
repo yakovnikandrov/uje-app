@@ -1,0 +1,10 @@
+meta:
+  environment: python
+  toolchain:
+    name: pip
+    version: "3.11"
+build:
+  requirementsPath: requirements.txt
+run:
+  containerPort: 8000
+  scriptName: main.py
