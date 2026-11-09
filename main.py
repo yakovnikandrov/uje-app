@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -9,6 +10,10 @@ from ai_brain import ask_uje_router
 from memory import init_db, save_fact, get_all_facts
 
 app = FastAPI()
+
+# СОЗДАЕМ ПАПКУ STATIC, ЕСЛИ ЕЁ НЕТ
+os.makedirs("static", exist_ok=True)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -30,7 +35,6 @@ async def ask_bot(message: UserMessage):
     user_text = message.text.strip().lower()
     print(f"📥 Получено: {user_text}") 
     
-    # СЛОВАРЬ ДЛЯ ПЕРЕВОДА КЛЮЧЕЙ НА РУССКИЙ
     KEY_NAMES = {
         "home_address": "🏠 Домашний адрес",
         "work_address": "🏢 Рабочий адрес",
@@ -38,7 +42,6 @@ async def ask_bot(message: UserMessage):
         "favorite_food": "🍔 Любимая еда"
     }
     
-    # ПРОВЕРКА: Что бот о тебе знает?
     if "что ты обо мне знаешь" in user_text or "моя память" in user_text:
         facts = get_all_facts()
         if not facts:
@@ -46,7 +49,7 @@ async def ask_bot(message: UserMessage):
         
         reply = "🧠 Вот что я о тебе помню:\n\n"
         for k, v in facts.items():
-            ru_key = KEY_NAMES.get(k, k) # Берем русский перевод, если есть
+            ru_key = KEY_NAMES.get(k, k)
             reply += f"• {ru_key}: {v}\n"
         return {"answer": reply}
     
