@@ -2,100 +2,141 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f0f0f">
     <title>УЖЕ | Твой цифровой помощник</title>
     <style>
+        /* Сброс стилей */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             background-color: #0f0f0f;
             color: white;
             display: flex;
             flex-direction: column;
-            align-items: center;
             height: 100vh;
-            margin: 0;
+            height: 100dvh; /* Динамическая высота для мобильных */
             overflow: hidden;
         }
-        .header { text-align: center; margin-top: 8vh; transition: 0.5s; }
-        .header.active { margin-top: 2vh; transform: scale(0.8); }
-        h1 { font-size: 3rem; margin: 0; letter-spacing: 4px; font-weight: 900; }
-        p { color: #888; margin-top: 10px; font-size: 0.9rem; }
-        
-        #chat-container {
-            flex: 1; width: 100%; max-width: 600px; padding: 20px;
-            overflow-y: auto; display: flex; flex-direction: column;
-            gap: 15px; padding-bottom: 140px; 
-        }
-        
-        .message {
-            padding: 15px 20px; border-radius: 20px;
-            max-width: 80%; line-height: 1.4; animation: fadeIn 0.3s ease-out;
-            white-space: pre-wrap; 
-        }
-        .user { background-color: #333; align-self: flex-end; border-bottom-right-radius: 5px; }
-        .bot { background-color: #1a1a1a; border: 1px solid #00c853; align-self: flex-start; border-bottom-left-radius: 5px; }
 
+        /* Шапка */
+        .header {
+            text-align: center;
+            padding: 20px 10px;
+            flex-shrink: 0;
+            transition: 0.3s;
+        }
+        .header.active {
+            padding: 10px;
+            transform: scale(0.85);
+        }
+        h1 { font-size: 2.5rem; letter-spacing: 3px; font-weight: 900; }
+        p { color: #888; margin-top: 5px; font-size: 0.85rem; }
+
+        /* Чат (занимает все свободное место) */
+        #chat-container {
+            flex: 1;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 85%;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease-out;
+            white-space: pre-wrap; 
+            font-size: 0.95rem;
+        }
+        .user { background-color: #333; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .bot { background-color: #1a1a1a; border: 1px solid #00c853; align-self: flex-start; border-bottom-left-radius: 4px; }
+
+        /* Нижняя панель (Кнопки + Ввод) */
+        .bottom-panel {
+            flex-shrink: 0;
+            background: #0f0f0f;
+            padding-bottom: env(safe-area-inset-bottom); /* Для айфонов с полоской */
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Быстрые кнопки */
         .quick-actions {
-            position: fixed; bottom: 80px; width: 90%; max-width: 600px;
-            display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;
-            scrollbar-width: none; z-index: 5;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 15px;
+            scrollbar-width: none;
         }
         .quick-actions::-webkit-scrollbar { display: none; }
         .quick-btn {
             background: #1e1e1e; color: #00c853; border: 1px solid #00c853;
-            padding: 8px 15px; border-radius: 20px; white-space: nowrap;
-            cursor: pointer; font-size: 0.9rem; transition: 0.3s;
+            padding: 6px 12px; border-radius: 20px; white-space: nowrap;
+            cursor: pointer; font-size: 0.85rem; transition: 0.2s;
         }
-        .quick-btn:hover { background: #00c853; color: black; }
 
+        /* Строка ввода */
         .input-area {
-            position: fixed; bottom: 20px; width: 90%; max-width: 600px;
-            display: flex; background: #1e1e1e; padding: 8px;
-            border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            border: 1px solid #333; align-items: center; z-index: 10;
+            display: flex;
+            background: #1e1e1e;
+            padding: 6px 6px 6px 15px;
+            border-radius: 30px;
+            margin: 0 15px 10px 15px;
+            border: 1px solid #333;
+            align-items: center;
         }
         input[type="text"] {
             flex: 1; background: transparent; border: none; color: white;
-            font-size: 1.1rem; padding: 10px 20px; outline: none;
+            font-size: 1rem; outline: none;
         }
+        
         .btn-circle {
-            border: none; border-radius: 50%; width: 45px; height: 45px;
+            border: none; border-radius: 50%; width: 40px; height: 40px;
             font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; margin-left: 5px; transition: 0.3s;
+            align-items: center; justify-content: center; margin-left: 5px; transition: 0.2s;
+            flex-shrink: 0;
         }
-        #micBtn { background: #333; color: white; font-size: 1.2rem; }
+        #micBtn { background: #333; color: white; font-size: 1rem; }
         #micBtn.listening { background: #ff5252; animation: pulse 1s infinite; }
-        #sendBtn { background: #00c853; color: black; font-size: 1.2rem; }
-        #voiceToggleBtn { background: #333; color: white; font-size: 1.1rem; }
+        #sendBtn { background: #00c853; color: black; font-size: 1.1rem; }
+        #voiceToggleBtn { background: #333; color: white; font-size: 1rem; }
         #voiceToggleBtn.muted { color: #ff5252; }
         
+        /* Настройки */
         .settings-btn {
-            position: absolute; top: 20px; right: 20px;
+            position: absolute; top: 15px; right: 15px;
             background: transparent; border: none; color: #888;
             font-size: 1.5rem; cursor: pointer; transition: 0.3s; z-index: 20;
         }
-        .settings-btn:hover { color: white; transform: rotate(90deg); }
-        
         .settings-panel {
-            position: absolute; top: 0; right: -300px; width: 280px; height: 100%;
+            position: absolute; top: 0; right: -100%; width: 280px; height: 100%;
             background: #1a1a1a; border-left: 1px solid #333;
-            padding: 20px; transition: 0.3s; box-sizing: border-box; z-index: 15;
+            padding: 20px; transition: 0.3s; z-index: 15;
         }
         .settings-panel.open { right: 0; }
-        .settings-panel h3 { margin-top: 0; color: #00c853; }
-        .setting-group { margin-bottom: 20px; }
-        .setting-group label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem; }
+        .settings-panel h3 { margin-bottom: 15px; color: #00c853; }
+        .setting-group { margin-bottom: 15px; }
+        .setting-group label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.85rem; }
         .setting-group select, .setting-group input {
             width: 100%; background: #333; color: white;
             border: 1px solid #444; padding: 8px; border-radius: 5px;
         }
         .close-settings {
             background: #ff5252; color: white; border: none;
-            padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 20px;
+            padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 10px;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
     </style>
 </head>
 <body>
@@ -108,14 +149,14 @@
             <select id="voiceSelect"></select>
         </div>
         <div class="setting-group">
-            <label>Скорость речи: <span id="rateVal">1</span></label>
+            <label>Скорость: <span id="rateVal">1</span></label>
             <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1">
         </div>
         <div class="setting-group">
             <label>Тон: <span id="pitchVal">1</span></label>
             <input type="range" id="pitchRange" min="0.5" max="2" step="0.1" value="1">
         </div>
-        <button class="close-settings" onclick="toggleSettings()">Сохранить и закрыть</button>
+        <button class="close-settings" onclick="toggleSettings()">Сохранить</button>
     </div>
 
     <div class="header" id="header">
@@ -125,21 +166,24 @@
     
     <div id="chat-container"></div>
 
-    <div class="quick-actions">
-        <button class="quick-btn" onclick="quickAction('Вызови такси домой')">🚕 Домой</button>
-        <button class="quick-btn" onclick="quickAction('Хочу мой обычный кофе')">☕ Мой кофе</button>
-        <button class="quick-btn" onclick="quickAction('Что ты обо мне знаешь?')">🧠 Моя память</button>
-        <button class="quick-btn" onclick="quickAction('Что ты умеешь?')">📋 Помощь</button>
-    </div>
+    <div class="bottom-panel">
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="quickAction('Вызови такси домой')">🚕 Домой</button>
+            <button class="quick-btn" onclick="quickAction('Хочу мой обычный кофе')">☕ Мой кофе</button>
+            <button class="quick-btn" onclick="quickAction('Что ты обо мне знаешь?')">🧠 Память</button>
+            <button class="quick-btn" onclick="quickAction('Что ты умеешь?')">📋 Помощь</button>
+        </div>
 
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Напиши или скажи..." onkeypress="handleKeyPress(event)">
-        <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
-        <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
-        <button class="btn-circle" id="sendBtn" onclick="sendRequest()">→</button>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Напиши или скажи..." onkeypress="handleKeyPress(event)">
+            <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
+            <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
+            <button class="btn-circle" id="sendBtn" onclick="sendRequest()">→</button>
+        </div>
     </div>
 
     <script>
+        // --- ЛОГИКА ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ---
         const synth = window.speechSynthesis;
         let voices = [];
         let selectedVoice = null;
@@ -169,7 +213,7 @@
             ruVoices.forEach((voice, i) => {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `${voice.name} (${voice.lang})`;
+                option.textContent = `${voice.name}`;
                 select.appendChild(option);
             });
 
@@ -188,11 +232,10 @@
             if (!synth || !isVoiceEnabled) return; 
             synth.cancel();
             
-            // ОЧИСТКА ТЕКСТА ОТ СИМВОЛОВ И ЭМОДЗИ ДЛЯ ОЗВУЧКИ
             const cleanText = text
-                .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '') // Удаляем эмодзи
-                .replace(/[*#_~`]/g, '') // Удаляем звездочки и прочую разметку
-                .replace(/\s+/g, ' ') // Убираем лишние пробелы
+                .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '') 
+                .replace(/[*#_~`]/g, '') 
+                .replace(/\s+/g, ' ') 
                 .trim();
                 
             const utterance = new SpeechSynthesisUtterance(cleanText);
