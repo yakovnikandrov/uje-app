@@ -1,6 +1,6 @@
 import sqlite3
 
-DB_NAME = "uje_memory.db"
+DB_NAME = "/data/uje_memory.db"
 
 def init_db():
     """Создает таблицу для хранения фактов о пользователе"""
