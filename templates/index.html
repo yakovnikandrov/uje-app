@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>УЖЕ | Твой цифровой помощник</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: #0f0f0f;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .header { text-align: center; margin-top: 8vh; transition: 0.5s; }
+        .header.active { margin-top: 2vh; transform: scale(0.8); }
+        h1 { font-size: 3rem; margin: 0; letter-spacing: 4px; font-weight: 900; }
+        p { color: #888; margin-top: 10px; font-size: 0.9rem; }
+        
+        #chat-container {
+            flex: 1; width: 100%; max-width: 600px; padding: 20px;
+            overflow-y: auto; display: flex; flex-direction: column;
+            gap: 15px; padding-bottom: 140px; 
+        }
+        
+        .message {
+            padding: 15px 20px; border-radius: 20px;
+            max-width: 80%; line-height: 1.4; animation: fadeIn 0.3s ease-out;
+            white-space: pre-wrap; 
+        }
+        .user { background-color: #333; align-self: flex-end; border-bottom-right-radius: 5px; }
+        .bot { background-color: #1a1a1a; border: 1px solid #00c853; align-self: flex-start; border-bottom-left-radius: 5px; }
+
+        .quick-actions {
+            position: fixed; bottom: 80px; width: 90%; max-width: 600px;
+            display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;
+            scrollbar-width: none; z-index: 5;
+        }
+        .quick-actions::-webkit-scrollbar { display: none; }
+        .quick-btn {
+            background: #1e1e1e; color: #00c853; border: 1px solid #00c853;
+            padding: 8px 15px; border-radius: 20px; white-space: nowrap;
+            cursor: pointer; font-size: 0.9rem; transition: 0.3s;
+        }
+        .quick-btn:hover { background: #00c853; color: black; }
+
+        .input-area {
+            position: fixed; bottom: 20px; width: 90%; max-width: 600px;
+            display: flex; background: #1e1e1e; padding: 8px;
+            border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 1px solid #333; align-items: center; z-index: 10;
+        }
+        input[type="text"] {
+            flex: 1; background: transparent; border: none; color: white;
+            font-size: 1.1rem; padding: 10px 20px; outline: none;
+        }
+        .btn-circle {
+            border: none; border-radius: 50%; width: 45px; height: 45px;
+            font-weight: bold; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; margin-left: 5px; transition: 0.3s;
+        }
+        #micBtn { background: #333; color: white; font-size: 1.2rem; }
+        #micBtn.listening { background: #ff5252; animation: pulse 1s infinite; }
+        #sendBtn { background: #00c853; color: black; font-size: 1.2rem; }
+        #voiceToggleBtn { background: #333; color: white; font-size: 1.1rem; }
+        #voiceToggleBtn.muted { color: #ff5252; }
+        
+        .settings-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: transparent; border: none; color: #888;
+            font-size: 1.5rem; cursor: pointer; transition: 0.3s; z-index: 20;
+        }
+        .settings-btn:hover { color: white; transform: rotate(90deg); }
+        
+        .settings-panel {
+            position: absolute; top: 0; right: -300px; width: 280px; height: 100%;
+            background: #1a1a1a; border-left: 1px solid #333;
+            padding: 20px; transition: 0.3s; box-sizing: border-box; z-index: 15;
+        }
+        .settings-panel.open { right: 0; }
+        .settings-panel h3 { margin-top: 0; color: #00c853; }
+        .setting-group { margin-bottom: 20px; }
+        .setting-group label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem; }
+        .setting-group select, .setting-group input {
+            width: 100%; background: #333; color: white;
+            border: 1px solid #444; padding: 8px; border-radius: 5px;
+        }
+        .close-settings {
+            background: #ff5252; color: white; border: none;
+            padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 20px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
+    </style>
+</head>
+<body>
+    <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h3>Настройки голоса</h3>
+        <div class="setting-group">
+            <label>Голос</label>
+            <select id="voiceSelect"></select>
+        </div>
+        <div class="setting-group">
+            <label>Скорость речи: <span id="rateVal">1</span></label>
+            <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="setting-group">
+            <label>Тон: <span id="pitchVal">1</span></label>
+            <input type="range" id="pitchRange" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <button class="close-settings" onclick="toggleSettings()">Сохранить и закрыть</button>
+    </div>
+
+    <div class="header" id="header">
+        <h1>УЖЕ</h1>
+        <p>Твои желания исполнены до того, как ты успел устать.</p>
+    </div>
+    
+    <div id="chat-container"></div>
+
+    <div class="quick-actions">
+        <button class="quick-btn" onclick="quickAction('Вызови такси домой')">🚕 Домой</button>
+        <button class="quick-btn" onclick="quickAction('Хочу мой обычный кофе')">☕ Мой кофе</button>
+        <button class="quick-btn" onclick="quickAction('Что ты обо мне знаешь?')">🧠 Моя память</button>
+        <button class="quick-btn" onclick="quickAction('Что ты умеешь?')">📋 Помощь</button>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Напиши или скажи..." onkeypress="handleKeyPress(event)">
+        <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
+        <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
+        <button class="btn-circle" id="sendBtn" onclick="sendRequest()">→</button>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let selectedVoice = null;
+        let isVoiceEnabled = true; 
+
+        function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
+        
+        function toggleVoice() {
+            isVoiceEnabled = !isVoiceEnabled;
+            const btn = document.getElementById('voiceToggleBtn');
+            if (isVoiceEnabled) {
+                btn.innerText = '🔊';
+                btn.classList.remove('muted');
+            } else {
+                btn.innerText = '🔇';
+                btn.classList.add('muted');
+                synth.cancel(); 
+            }
+        }
+
+        function loadVoices() {
+            voices = synth.getVoices();
+            const select = document.getElementById('voiceSelect');
+            select.innerHTML = '';
+            const ruVoices = voices.filter(v => v.lang.includes('ru'));
+            
+            ruVoices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                select.appendChild(option);
+            });
+
+            if (ruVoices.length > 0) {
+                selectedVoice = ruVoices[0];
+                select.value = 0;
+            }
+            select.onchange = (e) => { selectedVoice = ruVoices[e.target.value]; };
+        }
+
+        synth.onvoiceschanged = loadVoices;
+        document.getElementById('rateRange').addEventListener('input', (e) => { document.getElementById('rateVal').innerText = e.target.value; });
+        document.getElementById('pitchRange').addEventListener('input', (e) => { document.getElementById('pitchVal').innerText = e.target.value; });
+
+        function speak(text) {
+            if (!synth || !isVoiceEnabled) return; 
+            synth.cancel();
+            
+            // ОЧИСТКА ТЕКСТА ОТ СИМВОЛОВ И ЭМОДЗИ ДЛЯ ОЗВУЧКИ
+            const cleanText = text
+                .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '') // Удаляем эмодзи
+                .replace(/[*#_~`]/g, '') // Удаляем звездочки и прочую разметку
+                .replace(/\s+/g, ' ') // Убираем лишние пробелы
+                .trim();
+                
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'ru-RU';
+            utterance.rate = parseFloat(document.getElementById('rateRange').value);
+            utterance.pitch = parseFloat(document.getElementById('pitchRange').value);
+            if (selectedVoice) utterance.voice = selectedVoice;
+            synth.speak(utterance);
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.interimResults = false;
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('micBtn').classList.add('listening');
+                document.getElementById('userInput').placeholder = "Слушаю...";
+            };
+            recognition.onresult = (event) => {
+                document.getElementById('userInput').value = event.results[0][0].transcript;
+                sendRequest();
+            };
+            recognition.onend = () => {
+                isListening = false;
+                document.getElementById('micBtn').classList.remove('listening');
+                document.getElementById('userInput').placeholder = "Напиши или скажи...";
+            };
+        } else {
+            document.getElementById('micBtn').style.display = 'none';
+        }
+
+        function toggleMic() {
+            if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
+            if (isListening) recognition.stop();
+            else recognition.start();
+        }
+
+        function handleKeyPress(e) { if (e.key === 'Enter') sendRequest(); }
+        function quickAction(text) { document.getElementById('userInput').value = text; sendRequest(); }
+
+        async function sendRequest() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if(!text) return;
+
+            document.getElementById('header').classList.add('active');
+            addMessage(text, 'user');
+            input.value = '';
+            const loadingId = addMessage('УЖЕ думает...', 'bot loading');
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+                addMessage(data.answer, 'bot');
+                speak(data.answer);
+            } catch (e) {
+                document.getElementById(loadingId).remove();
+                addMessage('Ошибка связи с сервером.', 'bot');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const container = document.getElementById('chat-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            msgDiv.innerText = text;
+            const id = 'msg-' + Date.now();
+            msgDiv.id = id;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        window.onload = () => { loadVoices(); setTimeout(loadVoices, 1000); };
+    </script>
+</body>
+</html>
