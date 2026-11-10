@@ -18,7 +18,6 @@
         h1 { font-size: 2.5rem; letter-spacing: 3px; font-weight: 900; }
         p { color: #888; margin-top: 5px; font-size: 0.85rem; }
 
-        /* --- БЛОК АФИШИ (ФОРМАТ 16:9 С ЗАЩИТОЙ) --- */
         #promo-banner {
             display: none;
             margin: 0 auto 15px auto; 
@@ -152,7 +151,6 @@
         <p>Твои желания исполнены до того, как ты успел устать.</p>
     </div>
 
-    <!-- БЛОК АФИШИ -->
     <div id="promo-banner" onclick="quickAction('Хочу на гастроужин!')">
         <img id="promo-img" src="" alt="Афиша">
         <div id="promo-text"></div>
@@ -183,7 +181,6 @@
         let selectedVoice = null;
         let isVoiceEnabled = true; 
 
-        // --- ЗАГРУЗКА АФИШИ ---
         async function loadPromo() {
             try {
                 const response = await fetch('/api/promo');
@@ -251,49 +248,68 @@
             synth.speak(utterance);
         }
 
-        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД (РЕЖИМ РАЦИИ) ---
+        // --- УЛУЧШЕННЫЙ ГОЛОСОВОЙ ВВОД ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
+        let isIntentionalStop = false; // Флаг: пользователь сам нажал стоп
+        let baseText = ""; // Текст, который уже был в поле до начала записи
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'ru-RU';
-            recognition.continuous = true; // Не останавливать при паузах
-            recognition.interimResults = true; // Показывать текст в процессе
+            recognition.continuous = true;
+            recognition.interimResults = true; // Включаем промежуточные результаты для видимости
 
             recognition.onstart = () => {
                 isListening = true;
                 document.getElementById('micBtn').classList.add('listening');
                 document.getElementById('userInput').placeholder = "Говорите... (нажмите еще раз чтобы остановить)";
-                document.getElementById('userInput').value = '';
+                // Запоминаем текст, который уже был в поле (если пользователь дополняет)
+                baseText = document.getElementById('userInput').value;
             };
 
             recognition.onresult = (event) => {
+                let interimTranscript = '';
                 let finalTranscript = '';
+
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
+                
+                // Показываем и промежуточный, и финальный текст
+                const currentText = (baseText + ' ' + finalTranscript + interimTranscript).trim();
+                document.getElementById('userInput').value = currentText;
+
+                // Если есть финальный текст, добавляем его к базе и очищаем промежуточный
                 if (finalTranscript) {
-                    const currentVal = document.getElementById('userInput').value;
-                    document.getElementById('userInput').value = currentVal + finalTranscript;
+                    baseText = (baseText + ' ' + finalTranscript).trim();
                 }
             };
 
             recognition.onend = () => {
+                // Если это не мы остановили, значит браузер прервал запись из-за тишины.
+                // Перезапускаем, чтобы пользователь мог говорить дальше.
+                if (!isIntentionalStop && isListening) {
+                    recognition.start();
+                    return;
+                }
+                
                 isListening = false;
                 document.getElementById('micBtn').classList.remove('listening');
                 document.getElementById('userInput').placeholder = "Напиши или скажи...";
-                // Не отправляем автоматически, даем пользователю проверить текст
             };
             
             recognition.onerror = (event) => {
                 console.error("Ошибка распознавания:", event.error);
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-                document.getElementById('userInput').placeholder = "Ошибка микрофона.";
+                if (event.error === 'not-allowed') {
+                    alert("Доступ к микрофону запрещен. Разрешите его в настройках браузера.");
+                    isIntentionalStop = true;
+                }
             }
         } else {
             document.getElementById('micBtn').style.display = 'none';
@@ -301,10 +317,14 @@
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
+            
             if (isListening) {
-                recognition.stop(); // Останавливаем запись. Текст останется в поле.
+                // Если уже пишет, останавливаем
+                isIntentionalStop = true;
+                recognition.stop();
             } else {
-                document.getElementById('userInput').value = ''; // Очищаем перед новым вводом
+                // Если не пишет, начинаем
+                isIntentionalStop = false;
                 recognition.start();
             }
         }
@@ -319,12 +339,14 @@
 
             // Если микрофон включен, выключаем его перед отправкой
             if (isListening) {
+                isIntentionalStop = true;
                 recognition.stop();
             }
 
             document.getElementById('header').classList.add('active');
             addMessage(text, 'user');
             input.value = '';
+            baseText = "";
             const loadingId = addMessage('УЖЕ думает...', 'bot loading');
 
             try {
