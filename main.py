@@ -6,6 +6,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from ai_brain import ask_uje_router
 from memory import init_db, save_fact, get_all_facts
+from tools import get_weather
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -41,7 +42,7 @@ async def ask_bot(message: UserMessage):
         "job": "💼 Работа", "name": "👤 Имя", "city": "🏙 Город"
     }
     
-    # 1. ОБУЧАЮЩИЕ КНОПКИ (Жестко прописанные ответы)
+    # 1. ОБУЧАЮЩИЕ КНОПКИ
     if "лень 2.0" in user_text.lower() or "наушники" in user_text.lower():
         reply = (
             "🎧 **Наша суперсила — Лень 2.0.**\n\n"
@@ -74,7 +75,7 @@ async def ask_bot(message: UserMessage):
             "1. Отвари свеклу, морковь и картофель до готовности. Остуди и нарежь кубиками.\n"
             "2. Нарежь соленые огурцы и квашеную капусту.\n"
             "3. Добавь зеленый горошек.\n"
-            "4. Заправь подсолнечным маслом (свеклу лучше заправить отдельно, чтобы не окрасила остальное).\n"
+            "4. Заправь подсолнечным маслом.\n"
             "5. Посоли по вкусу. Приятного аппетита!"
         )
         return {"answer": reply}
@@ -91,7 +92,7 @@ async def ask_bot(message: UserMessage):
             reply += f"• {ru_key}: {v}\n"
         return {"answer": reply}
 
-    # 3. ОТПРАВКА В ИИ (для всего остального)
+    # 3. ОТПРАВКА В ИИ
     try:
         user_facts = get_all_facts()
         loop = asyncio.get_running_loop()
@@ -109,19 +110,27 @@ async def ask_bot(message: UserMessage):
             saved_count += 1
             print(f"💾 Запомнил: {key} = {value}")
 
-        # Выполнение действий от роутера
-        if action == "route_home":
+        # ВЫПОЛНЕНИЕ ДЕЙСТВИЙ
+        if action == "get_weather":
+            city = params.get("city", user_facts.get("city", "Уфа"))
+            # Запускаем запрос погоды в отдельном потоке, чтобы не вешать сервер
+            weather_text = await loop.run_in_executor(executor, get_weather, city)
+            reply = f"🌤 {weather_text}"
+            
+        elif action == "route_home":
             address = params.get("address") or user_facts.get("home_address")
             if address:
                 reply = f"🚕 Домой. Адрес помню: {address}. Вызываю машину."
             else:
                 reply = "🚕 Готов вызвать такси. Но я пока не знаю твой домашний адрес. Скажи его, и я запомню."
+                
         elif action == "my_coffee":
             coffee = params.get("item") or user_facts.get("favorite_coffee")
             if coffee:
                 reply = f"☕ Ваш обычный {coffee}. Заказываю."
             else:
                 reply = "☕ Какой кофе вы предпочитаете? Я запомню на будущее."
+                
         else:
             reply = params.get("reply", "Я вас услышал.")
             if saved_count > 0:
