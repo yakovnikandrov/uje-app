@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import FileResponse # НУЖНО ДЛЯ PWA
 from pydantic import BaseModel
 import uvicorn
 import asyncio
@@ -28,14 +28,35 @@ async def startup():
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html", context={})
 
-# --- PWA ЭНДПОИНТЫ ---
+# --- PWA ФАЙЛЫ ---
 @app.get("/manifest.json")
 async def get_manifest():
-    return FileResponse("manifest.json")
+    return JSONResponse({
+        "name": "УЖЕ | Дворецкий",
+        "short_name": "УЖЕ",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0f0f0f",
+        "theme_color": "#0f0f0f",
+        "icons": [
+            {
+                "src": "https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=192x192&cs=192x0",
+                "sizes": "192x192",
+                "type": "image/jpeg"
+            }
+        ]
+    })
 
 @app.get("/sw.js")
 async def get_sw():
-    return FileResponse("sw.js")
+    return """
+    self.addEventListener('install', (e) => {
+        console.log('[Service Worker] Install');
+    });
+    self.addEventListener('fetch', (e) => {
+        // Заглушка для PWA
+    });
+    """
 
 @app.get("/api/promo")
 async def get_promo():
@@ -109,7 +130,7 @@ async def ask_bot(message: UserMessage):
         elif action == "play_music":
             genre = params.get("genre", "музыку")
             reply = await loop.run_in_executor(executor, play_music, genre)
-            return {"answer": reply, "action": "show_player"}
+            return {"answer": reply, "action": "show_player"} 
             
         elif action == "order_food":
             dish = params.get("dish", "еду")

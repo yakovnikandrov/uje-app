@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>УЖЕ | Твой цифровой помощник</title>
+    <!-- Ссылки для PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240&360x360&cs=360x0">
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html {
@@ -98,6 +102,7 @@
     <div class="app-wrapper">
         
         <div class="sidebar left-sidebar">
+            <!-- ... (Баннеры остались без изменений) ... -->
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
             </div>
@@ -115,8 +120,8 @@
                 <p>Твои желания уже исполнены, как только ты успел подумать.</p>
             </div>
 
-            <!-- ВСЕ 6 БАННЕРОВ В МОБИЛЬНОЙ ЛЕНТЕ -->
             <div id="mobile-banners">
+                <!-- ... (Все 6 баннеров остались без изменений) ... -->
                 <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                     <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
                 </div>
@@ -170,6 +175,7 @@
         </div>
 
         <div class="sidebar right-sidebar">
+            <!-- ... (Правые баннеры остались без изменений) ... -->
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/nrUv_LLdkVUMXrrGzMyWPPsnkgYkkKB3hDbdEIZZ_84s92xSjhmQiSkUfnxaCBYgPTGhb2IhfAhQlXrs4KZM1z2m.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 4">
             </div>
@@ -184,6 +190,7 @@
     </div>
 
     <script>
+        // ... (Начало скрипта без изменений) ...
         const synth = window.speechSynthesis;
         let voices = [];
         let selectedVoice = null;
@@ -281,7 +288,7 @@
             synth.speak(utterance);
         }
 
-        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД (БЕЗ ДУБЛЕЙ) ---
+        // --- ЖЕЛЕЗОБЕТОННЫЙ ГОЛОСОВОЙ ВВОД ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null; let isListening = false; let isIntentionalStop = false;
 
@@ -295,21 +302,18 @@
                 isListening = true; 
                 document.getElementById('micBtn').classList.add('listening'); 
                 document.getElementById('userInput').placeholder = "Говорите..."; 
+                document.getElementById('userInput').value = ''; // Очищаем поле при старте
             };
             
             recognition.onresult = (event) => {
-                let finalTranscript = '';
-                // Собираем ТОЛЬКО финальные результаты, начиная с последнего индекса
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    }
+                // ЖЕЛЕЗОБЕТОННЫЙ МЕТОД: собираем всю фразу заново с нуля
+                let fullText = '';
+                for (let i = 0; i < event.results.length; ++i) {
+                    fullText += event.results[i][0].transcript;
                 }
-                // Добавляем к тому, что уже есть, не затирая старый текст
-                if (finalTranscript) {
-                    document.getElementById('userInput').value += finalTranscript;
-                    autoResize(document.getElementById('userInput'));
-                }
+                // Просто заменяем значение в поле. Никаких += и прибавлений.
+                document.getElementById('userInput').value = fullText;
+                autoResize(document.getElementById('userInput'));
             };
             
             recognition.onend = () => {
@@ -317,7 +321,6 @@
                 isListening = false; 
                 document.getElementById('micBtn').classList.remove('listening'); 
                 document.getElementById('userInput').placeholder = "Напиши или скажи..."; 
-                autoResize(document.getElementById('userInput'));
             };
             
             recognition.onerror = (event) => { 
@@ -330,12 +333,7 @@
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
             if (isListening) { isIntentionalStop = true; recognition.stop(); } 
-            else { 
-                isIntentionalStop = false; 
-                // При старте очищаем поле, чтобы текст не накапливался с прошлого раза
-                document.getElementById('userInput').value = ''; 
-                recognition.start(); 
-            }
+            else { isIntentionalStop = false; recognition.start(); }
         }
         
         function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRequest(); } }
