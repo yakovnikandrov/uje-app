@@ -30,7 +30,7 @@
             width: 90%;
             max-width: 450px; 
             aspect-ratio: 16 / 9; 
-            max-height: 25vh; /* Защита: не больше четверти экрана */
+            max-height: 25vh; 
             position: relative; 
             cursor: pointer;
         }
@@ -183,6 +183,7 @@
         let selectedVoice = null;
         let isVoiceEnabled = true; 
 
+        // --- ЗАГРУЗКА АФИШИ ---
         async function loadPromo() {
             try {
                 const response = await fetch('/api/promo');
@@ -250,6 +251,7 @@
             synth.speak(utterance);
         }
 
+        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД (РЕЖИМ РАЦИИ) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
@@ -257,29 +259,54 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'ru-RU';
-            recognition.interimResults = false;
+            recognition.continuous = true; // Не останавливать при паузах
+            recognition.interimResults = true; // Показывать текст в процессе
+
             recognition.onstart = () => {
                 isListening = true;
                 document.getElementById('micBtn').classList.add('listening');
-                document.getElementById('userInput').placeholder = "Слушаю...";
+                document.getElementById('userInput').placeholder = "Говорите... (нажмите еще раз чтобы остановить)";
+                document.getElementById('userInput').value = '';
             };
+
             recognition.onresult = (event) => {
-                document.getElementById('userInput').value = event.results[0][0].transcript;
-                sendRequest();
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    }
+                }
+                if (finalTranscript) {
+                    const currentVal = document.getElementById('userInput').value;
+                    document.getElementById('userInput').value = currentVal + finalTranscript;
+                }
             };
+
             recognition.onend = () => {
                 isListening = false;
                 document.getElementById('micBtn').classList.remove('listening');
                 document.getElementById('userInput').placeholder = "Напиши или скажи...";
+                // Не отправляем автоматически, даем пользователю проверить текст
             };
+            
+            recognition.onerror = (event) => {
+                console.error("Ошибка распознавания:", event.error);
+                isListening = false;
+                document.getElementById('micBtn').classList.remove('listening');
+                document.getElementById('userInput').placeholder = "Ошибка микрофона.";
+            }
         } else {
             document.getElementById('micBtn').style.display = 'none';
         }
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            if (isListening) recognition.stop();
-            else recognition.start();
+            if (isListening) {
+                recognition.stop(); // Останавливаем запись. Текст останется в поле.
+            } else {
+                document.getElementById('userInput').value = ''; // Очищаем перед новым вводом
+                recognition.start();
+            }
         }
 
         function handleKeyPress(e) { if (e.key === 'Enter') sendRequest(); }
@@ -289,6 +316,11 @@
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if(!text) return;
+
+            // Если микрофон включен, выключаем его перед отправкой
+            if (isListening) {
+                recognition.stop();
+            }
 
             document.getElementById('header').classList.add('active');
             addMessage(text, 'user');
