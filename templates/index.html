@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>УЖЕ | Твой цифровой помощник</title>
-    <!-- Ссылки для PWA -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240&360x360&cs=360x0">
+    <link rel="apple-touch-icon" href="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=192x192&cs=192x0">
     
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -102,7 +101,6 @@
     <div class="app-wrapper">
         
         <div class="sidebar left-sidebar">
-            <!-- ... (Баннеры остались без изменений) ... -->
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
             </div>
@@ -121,7 +119,6 @@
             </div>
 
             <div id="mobile-banners">
-                <!-- ... (Все 6 баннеров остались без изменений) ... -->
                 <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                     <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
                 </div>
@@ -175,7 +172,6 @@
         </div>
 
         <div class="sidebar right-sidebar">
-            <!-- ... (Правые баннеры остались без изменений) ... -->
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/nrUv_LLdkVUMXrrGzMyWPPsnkgYkkKB3hDbdEIZZ_84s92xSjhmQiSkUfnxaCBYgPTGhb2IhfAhQlXrs4KZM1z2m.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 4">
             </div>
@@ -190,7 +186,6 @@
     </div>
 
     <script>
-        // ... (Начало скрипта без изменений) ...
         const synth = window.speechSynthesis;
         let voices = [];
         let selectedVoice = null;
@@ -288,9 +283,12 @@
             synth.speak(utterance);
         }
 
-        // --- ЖЕЛЕЗОБЕТОННЫЙ ГОЛОСОВОЙ ВВОД ---
+        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД (С НАКОПИТЕЛЕМ) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null; let isListening = false; let isIntentionalStop = false;
+        let recognition = null; 
+        let isListening = false; 
+        let isIntentionalStop = false;
+        let accumulatedText = ""; // ГЛОБАЛЬНЫЙ АККУМУЛЯТОР ТЕКСТА
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition(); 
@@ -302,22 +300,31 @@
                 isListening = true; 
                 document.getElementById('micBtn').classList.add('listening'); 
                 document.getElementById('userInput').placeholder = "Говорите..."; 
-                document.getElementById('userInput').value = ''; // Очищаем поле при старте
+                // При авто-перезапуске забираем текст, который уже есть в поле
+                accumulatedText = document.getElementById('userInput').value;
             };
             
             recognition.onresult = (event) => {
-                // ЖЕЛЕЗОБЕТОННЫЙ МЕТОД: собираем всю фразу заново с нуля
-                let fullText = '';
-                for (let i = 0; i < event.results.length; ++i) {
-                    fullText += event.results[i][0].transcript;
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        // Если это финальный кусок, добавляем его в аккумулятор
+                        accumulatedText += event.results[i][0].transcript + ' ';
+                    } else {
+                        // Если промежуточный, собираем отдельно
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
-                // Просто заменяем значение в поле. Никаких += и прибавлений.
-                document.getElementById('userInput').value = fullText;
+                // В поле пишем: то, что уже накопили + то, что еще меняется (промежуточное)
+                document.getElementById('userInput').value = (accumulatedText + interimTranscript).trim();
                 autoResize(document.getElementById('userInput'));
             };
             
             recognition.onend = () => {
-                if (!isIntentionalStop && isListening) { recognition.start(); return; }
+                if (!isIntentionalStop && isListening) { 
+                    recognition.start(); // Авто-перезапуск при паузе
+                    return; 
+                }
                 isListening = false; 
                 document.getElementById('micBtn').classList.remove('listening'); 
                 document.getElementById('userInput').placeholder = "Напиши или скажи..."; 
@@ -332,8 +339,15 @@
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            if (isListening) { isIntentionalStop = true; recognition.stop(); } 
-            else { isIntentionalStop = false; recognition.start(); }
+            if (isListening) { 
+                isIntentionalStop = true; 
+                recognition.stop(); 
+            } else { 
+                isIntentionalStop = false; 
+                document.getElementById('userInput').value = ''; // Очищаем поле при ручном старте
+                accumulatedText = ""; // Сбрасываем аккумулятор
+                recognition.start(); 
+            }
         }
         
         function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRequest(); } }
@@ -344,6 +358,7 @@
             if(!text) return;
             if (isListening) { isIntentionalStop = true; recognition.stop(); }
             document.getElementById('header').classList.add('active'); addMessage(text, 'user'); input.value = ''; input.style.height = 'auto'; 
+            accumulatedText = ""; // Сбрасываем аккумулятор после отправки
             
             const loadingTexts = ["УЖЕ делаю...", "УЖЕ заказываю...", "УЖЕ решаю...", "УЖЕ проверяю..."];
             const loadingId = addMessage(loadingTexts[Math.floor(Math.random() * loadingTexts.length)], 'bot loading');
