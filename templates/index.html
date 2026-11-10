@@ -56,30 +56,28 @@
         .quick-actions::-webkit-scrollbar { display: none; }
         .quick-btn {
             background: #1e1e1e; color: #00c853; border: 1px solid #00c853;
-            padding: 6px 12px; border-radius: 20px; white-space: nowrap;
+            padding: 8px 14px; border-radius: 20px; white-space: nowrap;
             cursor: pointer; font-size: 0.85rem; transition: 0.2s;
         }
+        .quick-btn:hover { background: #00c853; color: black; }
+        
         .input-area {
             display: flex; background: #1e1e1e;
-            padding: 6px 6px 6px 15px; border-radius: 20px; /* Чуть меньше радиус */
-            margin: 0 15px 10px 15px; border: 1px solid #333; align-items: flex-end; /* Прижимаем к низу */
+            padding: 6px 6px 6px 15px; border-radius: 20px;
+            margin: 0 15px 10px 15px; border: 1px solid #333; align-items: flex-end;
         }
         
-        /* ЗАМЕНИЛИ INPUT НА TEXTAREA */
         textarea {
             flex: 1; background: transparent; border: none; color: white;
             font-size: 1rem; outline: none; resize: none; 
-            max-height: 120px; /* Ограничение высоты */
-            line-height: 1.4;
-            padding: 8px 0; /* Отступы сверху и снизу */
-            font-family: inherit;
+            max-height: 120px; line-height: 1.4; padding: 8px 0; font-family: inherit;
         }
         
         .btn-circle {
             border: none; border-radius: 50%; width: 40px; height: 40px;
             font-weight: bold; cursor: pointer; display: flex;
             align-items: center; justify-content: center; margin-left: 5px; transition: 0.2s; flex-shrink: 0;
-            margin-bottom: 3px; /* Выравнивание по центру textarea */
+            margin-bottom: 3px;
         }
         #micBtn { background: #333; color: white; font-size: 1rem; }
         #micBtn.listening { background: #ff5252; animation: pulse 1s infinite; }
@@ -147,15 +145,14 @@
 
     <div class="bottom-panel">
         <div class="quick-actions">
-            <button class="quick-btn" onclick="quickAction('Вызови такси домой')">🚕 Домой</button>
-            <button class="quick-btn" onclick="quickAction('Хочу мой обычный кофе')">☕ Мой кофе</button>
-            <button class="quick-btn" onclick="quickAction('Что ты обо мне знаешь?')">🧠 Память</button>
-            <button class="quick-btn" onclick="quickAction('Чем я лучше ИИ?')">👑 Моя мощь</button>
-            <button class="quick-btn" onclick="quickAction('Хочу рассказать о себе')">📝 О себе</button>
+            <button class="quick-btn" onclick="quickAction('Лень 2.0 (Наушники)')">🎧 Лень 2.0 (Наушники)</button>
+            <button class="quick-btn" onclick="quickAction('Чем я лучше ИИ?')">👑 Чем я лучше ИИ?</button>
+            <button class="quick-btn" onclick="quickAction('Тест памяти')">🧠 Тест памяти</button>
+            <button class="quick-btn" onclick="quickAction('Приготовь винегрет')">🍳 Приготовь винегрет</button>
+            <button class="quick-btn" onclick="quickAction('Посмотреть память')">🔍 Посмотреть память</button>
         </div>
 
         <div class="input-area">
-            <!-- ЗАМЕНИЛИ INPUT НА TEXTAREA -->
             <textarea id="userInput" placeholder="Напиши или скажи..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
             <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
             <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
@@ -169,15 +166,20 @@
         let selectedVoice = null;
         let isVoiceEnabled = true; 
 
-        // --- ФУНКЦИЯ АВТО-РАСТЯГИВАНИЯ TEXTAREA ---
+        // --- АВТО-РАСТЯГИВАНИЕ TEXTAREA ---
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = textarea.scrollHeight + 'px';
         }
+        document.getElementById('userInput').addEventListener('input', function() { autoResize(this); });
 
-        // Вызываем авто-ресайз при обычном вводе с клавиатуры
-        document.getElementById('userInput').addEventListener('input', function() {
-            autoResize(this);
+        // --- АВТО-ПРИВЕТСТВИЕ ПРИ ЗАГРУЗКЕ ---
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const welcomeText = "Привет! Я — УЖЕ, твой цифровой дворецкий. 🎩\n\nЯ не просто болтаю, как ChatGPT. Я умею запоминать твои привычки, отвечать голосом и выполнять команды (в будущем — такси, еда).\n\nМоя главная фишка — **Лень 2.0**. Представь, что ты на кухне, а я в твоих наушниках. Ты просто говоришь, что тебе нужно, и я отвечаю.\n\nПопробуй нажать кнопки внизу или задай мне любой вопрос голосом! 👇";
+                addMessage(welcomeText, 'bot');
+                document.getElementById('header').classList.add('active');
+            }, 500);
         });
 
         async function loadPromo() {
@@ -247,12 +249,12 @@
             synth.speak(utterance);
         }
 
-        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД ---
+        // --- ГОЛОСОВОЙ ВВОД ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
         let isIntentionalStop = false;
-        let baseText = ""; // Текст, который уже был в поле до начала записи
+        let baseText = "";
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -264,7 +266,6 @@
                 isListening = true;
                 document.getElementById('micBtn').classList.add('listening');
                 document.getElementById('userInput').placeholder = "Говорите...";
-                // Запоминаем то, что уже было в поле (если пользователь дополняет)
                 baseText = document.getElementById('userInput').value + (document.getElementById('userInput').value ? ' ' : '');
             };
 
@@ -272,7 +273,6 @@
                 let finalTranscript = '';
                 let interimTranscript = '';
 
-                // Перебираем ВСЕ результаты текущей сессии, чтобы избежать дублей
                 for (let i = 0; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript + ' ';
@@ -281,11 +281,8 @@
                     }
                 }
 
-                // Собираем полный текст: старый + финальный + промежуточный
                 const currentText = (baseText + finalTranscript + interimTranscript).trim();
                 document.getElementById('userInput').value = currentText;
-                
-                // Растягиваем поле ввода
                 autoResize(document.getElementById('userInput'));
             };
 
@@ -297,7 +294,6 @@
                 isListening = false;
                 document.getElementById('micBtn').classList.remove('listening');
                 document.getElementById('userInput').placeholder = "Напиши или скажи...";
-                // Финальный авто-ресайз на всякий случай
                 autoResize(document.getElementById('userInput'));
             };
             
@@ -314,7 +310,6 @@
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            
             if (isListening) {
                 isIntentionalStop = true;
                 recognition.stop();
@@ -324,10 +319,9 @@
             }
         }
 
-        // Обработка нажатия Enter (с Shift+Enter работает перенос строки)
         function handleKeyPress(e) { 
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Отменяем перенос строки
+                e.preventDefault();
                 sendRequest();
             }
         }
@@ -352,7 +346,7 @@
             addMessage(text, 'user');
             input.value = '';
             baseText = "";
-            input.style.height = 'auto'; // Сбрасываем высоту поля
+            input.style.height = 'auto'; 
             const loadingId = addMessage('УЖЕ думает...', 'bot loading');
 
             try {
