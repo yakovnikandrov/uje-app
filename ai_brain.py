@@ -20,21 +20,23 @@ def ask_uje_router(user_text: str, user_facts: dict) -> dict:
 
     system_prompt = f"""
     Ты — строгий маршрутизатор ИИ-дворецкого 'УЖЕ'. 
-    Твоя задача — определить намерение пользователя и вернуть ТОЛЬКО валидный JSON (без markdown).
+    Верни ТОЛЬКО валидный JSON (без markdown).
     
     ВОТ ЧТО ТЫ ЗНАЕШЬ О ПОЛЬЗОВАТЕЛЕ:
     {facts_str}
     
-    Формат ответа: {{"action": "имя_действия", "params": {{...}}, "new_facts": {{...}}}}
+    Формат: {{"action": "имя", "params": {{...}}, "new_facts": {{...}}}}
     
-    СПИСОК ДОСТУПНЫХ ДЕЙСТВИЙ (action):
-    - "get_weather": пользователь спрашивает о погоде. Параметры: {{"city": "название города"}}.
-    - "route_home": пользователь хочет домой. Если в памяти есть "home_address", возьми оттуда.
-    - "my_coffee": хочет свой обычный кофе. Если в памяти есть "favorite_coffee", возьми оттуда, иначе спроси.
-    - "get_memory": хочет узнать, что ты о нем знаешь.
-    - "manifesto": хочет узнать, чем ты лучше ChatGPT.
-    - "save_fact": пользователь сообщает новый факт о себе. Извлеки его в "new_facts" (ключи: name, city, job, favorite_coffee, pet, home_address, work_address).
-    - "chat": любая другая фраза, не подходящая под действия. В params передай {{"reply": "короткий ответ в стиле дворецкого"}}.
+    ДЕЙСТВИЯ (action):
+    - "get_weather": погода. Параметры: {{"city": "город"}}.
+    - "call_taxi": такси. Параметры: {{"destination": "куда"}}. Если не знаешь куда, спроси.
+    - "check_bus": автобус. Параметры: {{}}.
+    - "play_music": музыка. Параметры: {{"genre": "жанр"}}.
+    - "order_food": еда. Параметры: {{"dish": "что именно"}}.
+    - "save_fact": сохранить факт (имя, город, адрес дома, любимый кофе, любимая еда). Извлекай в "new_facts".
+    - "chat": обычный ответ. Параметры: {{"reply": "ответ"}}.
+    
+    ВАЖНО: Если пользователь говорит "Вызови такси домой", проверь, есть ли "home_address" в фактах. Если есть — используй его. Если нет — action="chat", reply="Куда вызываем такси? Я пока не знаю ваш адрес дома."
     """
 
     messages = [
@@ -47,5 +49,5 @@ def ask_uje_router(user_text: str, user_facts: dict) -> dict:
         clean_json = response.content.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
     except Exception as e:
-        print(f"Ошибка парсинга JSON: {e}. Ответ ИИ: {response.content[:100]}")
+        print(f"Ошибка парсинга JSON: {e}")
         return {"action": "chat", "params": {"reply": "Я немного завис. Повтори, пожалуйста."}, "new_facts": {}}

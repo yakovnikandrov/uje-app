@@ -13,26 +13,79 @@
             display: flex; flex-direction: column;
             height: 100vh; height: 100dvh; overflow: hidden;
         }
+
+        .app-wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Боковые панели (ТОЛЬКО РЕКЛАМА) */
+        .sidebar {
+            width: 220px;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar::-webkit-scrollbar { width: 0; }
+
+        /* Квадратный РЕКЛАМНЫЙ баннер 1:1 (КЛИКАБЕЛЬНЫЙ) */
+        .ad-banner {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #333;
+            position: relative;
+            background-color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .ad-banner:hover { border-color: #00c853; transform: scale(1.03); }
+        .ad-banner:active { transform: scale(0.97); }
+        
+        .ad-banner img {
+            width: 100%; height: 100%;
+            object-fit: cover; 
+            display: block;
+            pointer-events: none; /* Чтобы клик срабатывал на сам блок, а не картинку */
+        }
+
+        .center-panel {
+            flex: 1;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border-left: 1px solid #1a1a1a;
+            border-right: 1px solid #1a1a1a;
+        }
+
+        #mobile-banners {
+            display: none;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 15px;
+            scrollbar-width: none;
+        }
+        #mobile-banners::-webkit-scrollbar { display: none; }
+        #mobile-banners .ad-banner { width: 100px; height: 100px; flex-shrink: 0; }
+
         .header { text-align: center; padding: 20px 10px; flex-shrink: 0; transition: 0.3s; }
         .header.active { padding: 10px; transform: scale(0.85); }
         h1 { font-size: 2.5rem; letter-spacing: 3px; font-weight: 900; }
         p { color: #888; margin-top: 5px; font-size: 0.85rem; }
 
-        #promo-banner {
-            display: none; margin: 0 auto 15px auto; border-radius: 15px;
-            overflow: hidden; border: 1px solid #00c853; background: #1a1a1a;
-            flex-shrink: 0; width: 90%; max-width: 450px; aspect-ratio: 16 / 9; 
-            max-height: 25vh; position: relative; cursor: pointer;
-        }
-        #promo-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        #promo-text {
-            position: absolute; bottom: 0; left: 0; width: 100%;
-            padding: 8px 10px; background: rgba(0, 0, 0, 0.75); 
-            text-align: center; font-size: 0.85rem; color: #fff; backdrop-filter: blur(2px);
-        }
-
         #chat-container {
-            flex: 1; width: 100%; max-width: 800px; margin: 0 auto;
+            flex: 1; width: 100%; margin: 0 auto;
             padding: 10px 15px; overflow-y: auto;
             display: flex; flex-direction: column; gap: 12px;
         }
@@ -47,32 +100,39 @@
         .bottom-panel {
             flex-shrink: 0; background: #0f0f0f;
             padding-bottom: env(safe-area-inset-bottom);
-            width: 100%; max-width: 800px; margin: 0 auto;
+            width: 100%;
         }
-        .quick-actions {
-            display: flex; gap: 8px; overflow-x: auto;
-            padding: 10px 15px; scrollbar-width: none;
+
+        #music-player {
+            display: none; margin: 0 15px 10px 15px; background: #1a1a1a; 
+            border: 1px solid #00c853; border-radius: 15px; padding: 10px 15px;
+            flex-direction: column; gap: 8px;
         }
+        .player-top { display: flex; justify-content: space-between; align-items: center; }
+        #track-name { font-weight: bold; font-size: 0.9rem; color: #00c853; }
+        .close-btn { color: #ff5252; font-size: 1.2rem; cursor: pointer; }
+        .player-controls { display: flex; gap: 20px; font-size: 1.3rem; cursor: pointer; justify-content: center; align-items: center; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 5px; background: #333; border-radius: 5px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #00c853; cursor: pointer; }
+
+        .quick-actions { display: flex; gap: 8px; overflow-x: auto; padding: 10px 15px; scrollbar-width: none; }
         .quick-actions::-webkit-scrollbar { display: none; }
         .quick-btn {
             background: #1e1e1e; color: #00c853; border: 1px solid #00c853;
             padding: 8px 14px; border-radius: 20px; white-space: nowrap;
             cursor: pointer; font-size: 0.85rem; transition: 0.2s;
         }
-        .quick-btn:hover { background: #00c853; color: black; }
         
         .input-area {
             display: flex; background: #1e1e1e;
             padding: 6px 6px 6px 15px; border-radius: 20px;
             margin: 0 15px 10px 15px; border: 1px solid #333; align-items: flex-end;
         }
-        
         textarea {
             flex: 1; background: transparent; border: none; color: white;
             font-size: 1rem; outline: none; resize: none; 
             max-height: 120px; line-height: 1.4; padding: 8px 0; font-family: inherit;
         }
-        
         .btn-circle {
             border: none; border-radius: 50%; width: 40px; height: 40px;
             font-weight: bold; cursor: pointer; display: flex;
@@ -84,80 +144,128 @@
         #sendBtn { background: #00c853; color: black; font-size: 1.1rem; }
         #voiceToggleBtn { background: #333; color: white; font-size: 1rem; }
         #voiceToggleBtn.muted { color: #ff5252; }
-        
-        .settings-btn {
-            position: absolute; top: 15px; right: 15px;
-            background: transparent; border: none; color: #888;
-            font-size: 1.5rem; cursor: pointer; z-index: 20;
+
+        #geoBtn {
+            display: none; position: absolute; bottom: 150px; right: 20px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #00c853; color: black; border: none;
+            font-size: 1.8rem; box-shadow: 0 4px 15px rgba(0, 200, 83, 0.4);
+            cursor: pointer; z-index: 50; transition: 0.3s;
+            animation: pulse 2s infinite;
         }
-        .settings-panel {
-            position: absolute; top: 0; right: -100%; width: 280px; height: 100%;
-            background: #1a1a1a; border-left: 1px solid #333;
-            padding: 20px; transition: 0.3s; z-index: 15;
-        }
+
+        .settings-btn { position: absolute; top: 15px; right: 15px; background: transparent; border: none; color: #888; font-size: 1.5rem; cursor: pointer; z-index: 20; }
+        .settings-panel { position: absolute; top: 0; right: -100%; width: 280px; height: 100%; background: #1a1a1a; border-left: 1px solid #333; padding: 20px; transition: 0.3s; z-index: 15; }
         .settings-panel.open { right: 0; }
-        .settings-panel h3 { margin-bottom: 15px; color: #00c853; }
         .setting-group { margin-bottom: 15px; }
         .setting-group label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.85rem; }
-        .setting-group select, .setting-group input {
-            width: 100%; background: #333; color: white;
-            border: 1px solid #444; padding: 8px; border-radius: 5px;
-        }
-        .close-settings {
-            background: #ff5252; color: white; border: none;
-            padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 10px;
-        }
+        .setting-group select, .setting-group input { width: 100%; background: #333; color: white; border: 1px solid #444; padding: 8px; border-radius: 5px; }
+        .close-settings { background: #ff5252; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 200, 83, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0); } }
+
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            #mobile-banners { display: flex; }
+            .center-panel { border: none; }
+            #geoBtn { position: fixed; }
+        }
     </style>
 </head>
 <body>
     <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
-
+    
     <div class="settings-panel" id="settingsPanel">
         <h3>Настройки голоса</h3>
-        <div class="setting-group">
-            <label>Голос</label>
-            <select id="voiceSelect"></select>
-        </div>
-        <div class="setting-group">
-            <label>Скорость: <span id="rateVal">1</span></label>
-            <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1">
-        </div>
-        <div class="setting-group">
-            <label>Тон: <span id="pitchVal">1</span></label>
-            <input type="range" id="pitchRange" min="0.5" max="2" step="0.1" value="1">
-        </div>
+        <div class="setting-group"><label>Голос</label><select id="voiceSelect"></select></div>
+        <div class="setting-group"><label>Скорость: <span id="rateVal">1</span></label><input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1"></div>
+        <div class="setting-group"><label>Тон: <span id="pitchVal">1</span></label><input type="range" id="pitchRange" min="0.5" max="2" step="0.1" value="1"></div>
         <button class="close-settings" onclick="toggleSettings()">Сохранить</button>
     </div>
 
-    <div class="header" id="header">
-        <h1>УЖЕ</h1>
-        <p>Твои желания исполнены до того, как ты успел устать.</p>
-    </div>
+    <button id="geoBtn" onclick="getLocation()">🧭</button>
 
-    <div id="promo-banner" onclick="quickAction('Хочу на гастроужин!')">
-        <img id="promo-img" src="" alt="Афиша">
-        <div id="promo-text"></div>
-    </div>
-    
-    <div id="chat-container"></div>
-
-    <div class="bottom-panel">
-        <div class="quick-actions">
-            <button class="quick-btn" onclick="quickAction('Лень 2.0 (Наушники)')">🎧 Лень 2.0 (Наушники)</button>
-            <button class="quick-btn" onclick="quickAction('Чем я лучше ИИ?')">👑 Чем я лучше ИИ?</button>
-            <button class="quick-btn" onclick="quickAction('Тест памяти')">🧠 Тест памяти</button>
-            <button class="quick-btn" onclick="quickAction('Приготовь винегрет')">🍳 Приготовь винегрет</button>
-            <button class="quick-btn" onclick="quickAction('Посмотреть память')">🔍 Посмотреть память</button>
+    <div class="app-wrapper">
+        
+        <!-- ЛЕВАЯ КОЛОНКА (ССЫЛКИ-ЗАГЛУШКИ, ЗАМЕНИ НА РЕАЛЬНЫЕ) -->
+        <div class="sidebar left-sidebar">
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
+            </div>
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/SWWrYsnOQ1BWKcjOyizKo5ZGvOMd8aUntVBvLM73NV1agl2qI24z97-WXFrk3YAXrfmKV-JWgTxSJvPzYWCMS4vA.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=-ol9QJgAOK8wD8UBXhhlIYkpyt7iSUPLFyqu1UGE-K4&cs=1024x0" alt="Реклама 2">
+            </div>
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/iyFlMTiXCqWJme6zAMt-APND6YjWtw8hb1mcb9xNJdl5Mt490eTI_VUZ-ezlBg_ZnJsYc5JMLZPzaNtjTXMwucl3.jpg?quality=95&as=32x45,48x68,72x102,108x153,160x227,226x320&from=bu&cs=226x0" alt="Реклама 3">
+            </div>
         </div>
 
-        <div class="input-area">
-            <textarea id="userInput" placeholder="Напиши или скажи..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
-            <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
-            <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
-            <button class="btn-circle" id="sendBtn" onclick="sendRequest()">→</button>
+        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ -->
+        <div class="center-panel">
+            <div class="header" id="header">
+                <h1>УЖЕ</h1>
+                <p>Твои желания уже исполнены, как только ты успел подумать.</p>
+            </div>
+
+            <!-- МОБИЛЬНАЯ ЛЕНТА -->
+            <div id="mobile-banners">
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
+                </div>
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/SWWrYsnOQ1BWKcjOyizKo5ZGvOMd8aUntVBvLM73NV1agl2qI24z97-WXFrk3YAXrfmKV-JWgTxSJvPzYWCMS4vA.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=-ol9QJgAOK8wD8UBXhhlIYkpyt7iSUPLFyqu1UGE-K4&cs=1024x0" alt="Реклама 2">
+                </div>
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/iyFlMTiXCqWJme6zAMt-APND6YjWtw8hb1mcb9xNJdl5Mt490eTI_VUZ-ezlBg_ZnJsYc5JMLZPzaNtjTXMwucl3.jpg?quality=95&as=32x45,48x68,72x102,108x153,160x227,226x320&from=bu&cs=226x0" alt="Реклама 3">
+                </div>
+            </div>
+            
+            <div id="chat-container"></div>
+
+            <div class="bottom-panel">
+                <div id="music-player">
+                    <div class="player-top">
+                        <span id="track-name">Топ-10 (Audius)</span>
+                        <span class="close-btn" onclick="closePlayer()">✖</span>
+                    </div>
+                    <input type="range" id="seekBar" value="0" max="100" step="1" onchange="seekAudio()">
+                    <div class="player-controls">
+                        <span id="playPauseBtn" onclick="togglePlay()">⏸</span>
+                        <span onclick="nextTrack()">⏭</span>
+                    </div>
+                    <audio id="audioPlayer" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" preload="auto"></audio>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="quickAction('Чем я лучше ИИ?')">👑 Чем я лучше ИИ?</button>
+                    <button class="quick-btn" onclick="quickAction('Расскажи кратко о себе')">📝 Расскажи о себе</button>
+                    <button class="quick-btn" onclick="quickAction('Посмотреть память')">🧠 Память</button>
+                    <button class="quick-btn" onclick="quickAction('Включи музыку')">🎵 Включи музыку</button>
+                </div>
+
+                <div class="input-area">
+                    <textarea id="userInput" placeholder="Напиши или скажи..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                    <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
+                    <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
+                    <button class="btn-circle" id="sendBtn" onclick="sendRequest()">→</button>
+                </div>
+            </div>
         </div>
+
+        <!-- ПРАВАЯ КОЛОНКА (ССЫЛКИ-ЗАГЛУШКИ, ЗАМЕНИ НА РЕАЛЬНЫЕ) -->
+        <div class="sidebar right-sidebar">
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/nrUv_LLdkVUMXrrGzMyWPPsnkgYkkKB3hDbdEIZZ_84s92xSjhmQiSkUfnxaCBYgPTGhb2IhfAhQlXrs4KZM1z2m.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 4">
+            </div>
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-9.vkuserphoto.ru/s/v1/ig2/4p6DaqvbfJQQ6uOhuPeeNJNfYGf8Vm4CMl-ZTmwdrS4AhRrabH1S-sCbhzmOTalxEhmG_dN037nJWpq1BHW8jNP6.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 5">
+            </div>
+            <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                <img src="https://sun9-16.vkuserphoto.ru/s/v1/ig2/UR9oJhRIgfSZO6SLgnZTPrXOc3LaCKAvbPVMKqC5nPuFaOcoW8rT2A1hpJTQOAg2hyyYtHlxGIZ3gTqi5oxgCZEq.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 6">
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -165,70 +273,75 @@
         let voices = [];
         let selectedVoice = null;
         let isVoiceEnabled = true; 
+        const audioPlayer = document.getElementById('audioPlayer');
+        const seekBar = document.getElementById('seekBar');
 
-        // --- АВТО-РАСТЯГИВАНИЕ TEXTAREA ---
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
+        function togglePlay() {
+            const btn = document.getElementById('playPauseBtn');
+            if (audioPlayer.paused) { audioPlayer.play(); btn.innerText = "⏸"; } 
+            else { audioPlayer.pause(); btn.innerText = "▶️"; }
         }
+        function nextTrack() {
+            document.getElementById('track-name').innerText = "Следующий трек...";
+            if (!audioPlayer.paused) { audioPlayer.currentTime = 0; audioPlayer.play(); }
+        }
+        function closePlayer() {
+            document.getElementById('music-player').style.display = 'none';
+            audioPlayer.pause(); audioPlayer.currentTime = 0;
+            document.getElementById('playPauseBtn').innerText = "▶️";
+        }
+        audioPlayer.addEventListener('timeupdate', () => {
+            if (!isNaN(audioPlayer.duration)) {
+                seekBar.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            }
+        });
+        function seekAudio() { audioPlayer.currentTime = (seekBar.value / 100) * audioPlayer.duration; }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    try {
+                        await fetch('/api/location', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude })
+                        });
+                        document.getElementById('geoBtn').style.display = 'none';
+                        addMessage("Геолокация включена! Теперь я знаю, где вы.", 'bot');
+                        speak("Геолокация включена!");
+                    } catch (e) {}
+                }, (error) => alert("Вы отклонили геолокацию."));
+            }
+        }
+        function showGeoBtn() { document.getElementById('geoBtn').style.display = 'block'; }
+
+        function autoResize(textarea) { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; }
         document.getElementById('userInput').addEventListener('input', function() { autoResize(this); });
 
-        // --- АВТО-ПРИВЕТСТВИЕ ПРИ ЗАГРУЗКЕ ---
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
-                const welcomeText = "Привет! Я — УЖЕ, твой цифровой дворецкий. 🎩\n\nЯ не просто болтаю, как ChatGPT. Я умею запоминать твои привычки, отвечать голосом и выполнять команды (в будущем — такси, еда).\n\nМоя главная фишка — **Лень 2.0**. Представь, что ты на кухне, а я в твоих наушниках. Ты просто говоришь, что тебе нужно, и я отвечаю.\n\nПопробуй нажать кнопки внизу или задай мне любой вопрос голосом! 👇";
+                // ИСПРАВЛЕННЫЙ ТЕКСТ ПРИВЕТСТВИЯ
+                const welcomeText = "Привет! Я — УЖЕ, твой цифровой дворецкий. 🎩\n\nМоя главная фишка — **Лень 2.0**. Представь: на улице -20, ты стоишь на остановке, руки в карманах. Тебе не нужно доставать телефон и открывать карты, чтобы узнать, через сколько будет твой автобус. Ты просто говоришь в наушники: «Уже, когда мой автобус?» — и я отвечаю прямо в ухо. Или: «Уже, вызови такси» — и машина уже едет.\n\nВ отличие от ChatGPT, я помню твои привычки и выполняю команды.\n\nПопробуй задать мне вопрос голосом (нажми на микрофон) или просто напиши текстом в окне ниже! 👇";
                 addMessage(welcomeText, 'bot');
                 document.getElementById('header').classList.add('active');
             }, 500);
         });
 
-        async function loadPromo() {
-            try {
-                const response = await fetch('/api/promo');
-                const data = await response.json();
-                if (data.active) {
-                    document.getElementById('promo-img').src = data.image_url;
-                    document.getElementById('promo-text').innerText = data.text;
-                    document.getElementById('promo-banner').style.display = 'block'; 
-                }
-            } catch (e) { console.log("Афиша не загружена"); }
-        }
-
         function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
-        
         function toggleVoice() {
             isVoiceEnabled = !isVoiceEnabled;
             const btn = document.getElementById('voiceToggleBtn');
-            if (isVoiceEnabled) {
-                btn.innerText = '🔊';
-                btn.classList.remove('muted');
-            } else {
-                btn.innerText = '🔇';
-                btn.classList.add('muted');
-                synth.cancel(); 
-            }
+            if (isVoiceEnabled) { btn.innerText = '🔊'; btn.classList.remove('muted'); } 
+            else { btn.innerText = '🔇'; btn.classList.add('muted'); synth.cancel(); }
         }
-
         function loadVoices() {
             voices = synth.getVoices();
             const select = document.getElementById('voiceSelect');
             select.innerHTML = '';
             const ruVoices = voices.filter(v => v.lang.includes('ru'));
-            
-            ruVoices.forEach((voice, i) => {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = `${voice.name}`;
-                select.appendChild(option);
-            });
-
-            if (ruVoices.length > 0) {
-                selectedVoice = ruVoices[0];
-                select.value = 0;
-            }
+            ruVoices.forEach((voice, i) => { const option = document.createElement('option'); option.value = i; option.textContent = `${voice.name}`; select.appendChild(option); });
+            if (ruVoices.length > 0) { selectedVoice = ruVoices[0]; select.value = 0; }
             select.onchange = (e) => { selectedVoice = ruVoices[e.target.value]; };
         }
-
         synth.onvoiceschanged = loadVoices;
         document.getElementById('rateRange').addEventListener('input', (e) => { document.getElementById('rateVal').innerText = e.target.value; });
         document.getElementById('pitchRange').addEventListener('input', (e) => { document.getElementById('pitchVal').innerText = e.target.value; });
@@ -236,152 +349,74 @@
         function speak(text) {
             if (!synth || !isVoiceEnabled) return; 
             synth.cancel();
-            const cleanText = text
-                .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '') 
-                .replace(/[*#_~`]/g, '') 
-                .replace(/\s+/g, ' ') 
-                .trim();
+            const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '').replace(/[*#_~`]/g, '').replace(/\s+/g, ' ').trim();
             const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = 'ru-RU';
-            utterance.rate = parseFloat(document.getElementById('rateRange').value);
-            utterance.pitch = parseFloat(document.getElementById('pitchRange').value);
+            utterance.lang = 'ru-RU'; utterance.rate = parseFloat(document.getElementById('rateRange').value); utterance.pitch = parseFloat(document.getElementById('pitchRange').value);
             if (selectedVoice) utterance.voice = selectedVoice;
             synth.speak(utterance);
         }
 
-        // --- ГОЛОСОВОЙ ВВОД ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        let isListening = false;
-        let isIntentionalStop = false;
-        let baseText = "";
-
+        let recognition = null; let isListening = false; let isIntentionalStop = false; let preRecordText = "";
         if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onstart = () => {
-                isListening = true;
-                document.getElementById('micBtn').classList.add('listening');
-                document.getElementById('userInput').placeholder = "Говорите...";
-                baseText = document.getElementById('userInput').value + (document.getElementById('userInput').value ? ' ' : '');
-            };
-
+            recognition = new SpeechRecognition(); recognition.lang = 'ru-RU'; recognition.continuous = true; recognition.interimResults = true;
+            recognition.onstart = () => { isListening = true; document.getElementById('micBtn').classList.add('listening'); document.getElementById('userInput').placeholder = "Говорите..."; preRecordText = document.getElementById('userInput').value; };
             recognition.onresult = (event) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
-
+                let finalTranscript = ''; let interimTranscript = '';
                 for (let i = 0; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript + ' ';
+                    else interimTranscript += event.results[i][0].transcript;
                 }
-
-                const currentText = (baseText + finalTranscript + interimTranscript).trim();
-                document.getElementById('userInput').value = currentText;
-                autoResize(document.getElementById('userInput'));
+                let combinedText = preRecordText;
+                if (combinedText && (finalTranscript || interimTranscript)) combinedText += ' ';
+                combinedText += finalTranscript + interimTranscript;
+                document.getElementById('userInput').value = combinedText.trim(); autoResize(document.getElementById('userInput'));
             };
-
             recognition.onend = () => {
-                if (!isIntentionalStop && isListening) {
-                    recognition.start();
-                    return;
-                }
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-                document.getElementById('userInput').placeholder = "Напиши или скажи...";
-                autoResize(document.getElementById('userInput'));
+                if (!isIntentionalStop && isListening) { recognition.start(); return; }
+                isListening = false; document.getElementById('micBtn').classList.remove('listening'); document.getElementById('userInput').placeholder = "Напиши или скажи..."; autoResize(document.getElementById('userInput'));
             };
-            
-            recognition.onerror = (event) => {
-                console.error("Ошибка распознавания:", event.error);
-                if (event.error === 'not-allowed') {
-                    alert("Доступ к микрофону запрещен.");
-                    isIntentionalStop = true;
-                }
-            }
-        } else {
-            document.getElementById('micBtn').style.display = 'none';
-        }
+            recognition.onerror = (event) => { if (event.error === 'not-allowed') { alert("Доступ к микрофону запрещен."); isIntentionalStop = true; } }
+        } else { document.getElementById('micBtn').style.display = 'none'; }
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            if (isListening) {
-                isIntentionalStop = true;
-                recognition.stop();
-            } else {
-                isIntentionalStop = false;
-                recognition.start();
-            }
+            if (isListening) { isIntentionalStop = true; recognition.stop(); } 
+            else { isIntentionalStop = false; recognition.start(); }
         }
-
-        function handleKeyPress(e) { 
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendRequest();
-            }
-        }
-        
-        function quickAction(text) { 
-            document.getElementById('userInput').value = text; 
-            autoResize(document.getElementById('userInput'));
-            sendRequest(); 
-        }
+        function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRequest(); } }
+        function quickAction(text) { document.getElementById('userInput').value = text; autoResize(document.getElementById('userInput')); sendRequest(); }
 
         async function sendRequest() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
+            const input = document.getElementById('userInput'); const text = input.value.trim();
             if(!text) return;
-
-            if (isListening) {
-                isIntentionalStop = true;
-                recognition.stop();
-            }
-
-            document.getElementById('header').classList.add('active');
-            addMessage(text, 'user');
-            input.value = '';
-            baseText = "";
-            input.style.height = 'auto'; 
-            const loadingId = addMessage('УЖЕ думает...', 'bot loading');
+            if (isListening) { isIntentionalStop = true; recognition.stop(); }
+            document.getElementById('header').classList.add('active'); addMessage(text, 'user'); input.value = ''; preRecordText = ""; input.style.height = 'auto'; 
+            
+            const loadingTexts = ["УЖЕ делаю...", "УЖЕ заказываю...", "УЖЕ решаю...", "УЖЕ проверяю..."];
+            const loadingId = addMessage(loadingTexts[Math.floor(Math.random() * loadingTexts.length)], 'bot loading');
 
             try {
-                const response = await fetch('/api/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text })
-                });
+                const response = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) });
                 const data = await response.json();
-                document.getElementById(loadingId).remove();
-                addMessage(data.answer, 'bot');
-                speak(data.answer);
-            } catch (e) {
-                document.getElementById(loadingId).remove();
-                addMessage('Ошибка связи с сервером.', 'bot');
-            }
+                document.getElementById(loadingId).remove(); addMessage(data.answer, 'bot'); speak(data.answer);
+                if (data.action === "show_player") {
+                    document.getElementById('music-player').style.display = 'flex';
+                    audioPlayer.play().then(() => { document.getElementById('playPauseBtn').innerText = "⏸"; }).catch(e => console.log("Автоплей заблокирован"));
+                }
+                if (text.toLowerCase().includes("такси") || text.toLowerCase().includes("автобус")) { showGeoBtn(); }
+            } catch (e) { document.getElementById('loadingId') && document.getElementById('loadingId').remove(); addMessage('Ошибка связи.', 'bot'); }
         }
 
         function addMessage(text, sender) {
             const container = document.getElementById('chat-container');
             const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${sender}`;
-            msgDiv.innerText = text;
-            const id = 'msg-' + Date.now();
-            msgDiv.id = id;
-            container.appendChild(msgDiv);
-            container.scrollTop = container.scrollHeight;
-            return id;
+            msgDiv.className = `message ${sender}`; msgDiv.innerText = text;
+            const id = 'msg-' + Date.now(); msgDiv.id = id;
+            container.appendChild(msgDiv); container.scrollTop = container.scrollHeight; return id;
         }
 
-        window.onload = () => { 
-            loadVoices(); 
-            setTimeout(loadVoices, 1000); 
-            loadPromo(); 
-        };
+        window.onload = () => { loadVoices(); setTimeout(loadVoices, 1000); };
     </script>
 </body>
 </html>
