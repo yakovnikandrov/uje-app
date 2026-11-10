@@ -26,7 +26,6 @@ async def read_root(request: Request):
 # --- ЭНДПОИНТ ДЛЯ АФИШИ ---
 @app.get("/api/promo")
 async def get_promo():
-    # ТУТ УЖЕ ТВОЯ ССЫЛКА!
     promo_data = {
         "active": True, 
         "image_url": "https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0", 
@@ -47,6 +46,7 @@ async def ask_bot(message: UserMessage):
         "city": "🏙 Город", "age": "🎂 Возраст", "favorite_drink": "🍸 Любимый напиток"
     }
     
+    # 1. ПРОВЕРКА: Что бот знает?
     if "что ты обо мне знаешь" in user_text or "моя память" in user_text:
         facts = get_all_facts()
         if not facts:
@@ -58,6 +58,7 @@ async def ask_bot(message: UserMessage):
             reply += f"• {ru_key}: {v}\n"
         return {"answer": reply}
     
+    # 2. МАНИФЕСТ: ЧЕМ Я ЛУЧШЕ ИИ?
     if "чем я лучше ии" in user_text or "моя мощь" in user_text:
         reply = (
             "🚀 **В чем моя сила? Чем я отличаюсь от ChatGPT и DeepSeek?**\n\n"
@@ -74,6 +75,17 @@ async def ask_bot(message: UserMessage):
         )
         return {"answer": reply}
 
+    # 3. ОБРАБОТКА КЛИКА ПО АФИШЕ (ГАСТРОУЖИН)
+    if "хочу на гастроужин" in user_text or "гастроужин" in user_text:
+        reply = (
+            "🍷 Отличный выбор! Это закрытый ужин на 10 человек.\n\n"
+            "📅 Дата: 15 ноября, 19:00\n"
+            "💰 Стоимость: 5000 ₽\n\n"
+            "Я забронировал за вами место. Для подтверждения и оплаты, пожалуйста, свяжитесь с организатором (@yakovnikandrov) или нажмите кнопку ниже."
+        )
+        return {"answer": reply}
+
+    # 4. ТРИГГЕР ДЛЯ РАССКАЗА О СЕБЕ
     if "рассказать о себе" in user_text:
         reply = (
             "Отлично! 👤 Расскажи мне о себе всё, что считаешь важным: как тебя зовут, где ты живешь, кем работаешь, что любишь есть и пить, есть ли у тебя питомцы или хобби.\n\n"
@@ -81,6 +93,7 @@ async def ask_bot(message: UserMessage):
         )
         return {"answer": reply}
 
+    # 5. ОТПРАВКА В ИИ (для всего остального)
     try:
         user_facts = get_all_facts()
         loop = asyncio.get_running_loop()
