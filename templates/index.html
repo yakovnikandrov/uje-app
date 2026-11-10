@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
-    
-    <!-- PWA НАСТРОЙКИ -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="/manifest.json">
-
     <title>УЖЕ | Твой цифровой помощник</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,7 +23,6 @@
             overflow-x: hidden;
         }
 
-        /* Боковые панели (ТОЛЬКО РЕКЛАМА) */
         .sidebar {
             width: 220px;
             padding: 20px 10px;
@@ -41,7 +34,6 @@
         }
         .sidebar::-webkit-scrollbar { width: 0; }
 
-        /* Квадратный РЕКЛАМНЫЙ баннер 1:1 (КЛИКАБЕЛЬНЫЙ) */
         .ad-banner {
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -69,7 +61,7 @@
         .center-panel {
             flex: 1;
             max-width: 800px;
-            min-width: 0; 
+            min-width: 0;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -174,15 +166,10 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 200, 83, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0); } }
 
-        /* --- МОБИЛЬНАЯ ВЕРСИЯ --- */
         @media (max-width: 900px) {
-            .sidebar { display: none !important; } 
+            .sidebar { display: none !important; }
             #mobile-banners { display: flex; }
-            .center-panel { 
-                border: none; 
-                width: 100vw; 
-                max-width: 100vw; 
-            }
+            .center-panel { border: none; width: 100vw; max-width: 100vw; }
             #geoBtn { position: fixed; }
         }
     </style>
@@ -202,7 +189,6 @@
 
     <div class="app-wrapper">
         
-        <!-- ЛЕВАЯ КОЛОНКА (РЕКЛАМА) -->
         <div class="sidebar left-sidebar">
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
@@ -215,23 +201,37 @@
             </div>
         </div>
 
-        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ -->
         <div class="center-panel">
             <div class="header" id="header">
                 <h1>УЖЕ</h1>
                 <p>Твои желания уже исполнены, как только ты успел подумать.</p>
             </div>
 
-            <!-- МОБИЛЬНАЯ ЛЕНТА (РЕКЛАМА) -->
+            <!-- МОБИЛЬНАЯ ЛЕНТА (ТЕПЕРЬ ВСЕ 6 БАННЕРОВ) -->
             <div id="mobile-banners">
+                <!-- 1 -->
                 <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                     <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0" alt="Реклама 1">
                 </div>
+                <!-- 2 -->
                 <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                     <img src="https://sun9-53.vkuserphoto.ru/s/v1/ig2/SWWrYsnOQ1BWKcjOyizKo5ZGvOMd8aUntVBvLM73NV1agl2qI24z97-WXFrk3YAXrfmKV-JWgTxSJvPzYWCMS4vA.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=-ol9QJgAOK8wD8UBXhhlIYkpyt7iSUPLFyqu1UGE-K4&cs=1024x0" alt="Реклама 2">
                 </div>
+                <!-- 3 -->
                 <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                     <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/iyFlMTiXCqWJme6zAMt-APND6YjWtw8hb1mcb9xNJdl5Mt490eTI_VUZ-ezlBg_ZnJsYc5JMLZPzaNtjTXMwucl3.jpg?quality=95&as=32x45,48x68,72x102,108x153,160x227,226x320&from=bu&cs=226x0" alt="Реклама 3">
+                </div>
+                <!-- 4 -->
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/nrUv_LLdkVUMXrrGzMyWPPsnkgYkkKB3hDbdEIZZ_84s92xSjhmQiSkUfnxaCBYgPTGhb2IhfAhQlXrs4KZM1z2m.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 4">
+                </div>
+                <!-- 5 -->
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-9.vkuserphoto.ru/s/v1/ig2/4p6DaqvbfJQQ6uOhuPeeNJNfYGf8Vm4CMl-ZTmwdrS4AhRrabH1S-sCbhzmOTalxEhmG_dN037nJWpq1BHW8jNP6.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 5">
+                </div>
+                <!-- 6 -->
+                <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
+                    <img src="https://sun9-16.vkuserphoto.ru/s/v1/ig2/UR9oJhRIgfSZO6SLgnZTPrXOc3LaCKAvbPVMKqC5nPuFaOcoW8rT2A1hpJTQOAg2hyyYtHlxGIZ3gTqi5oxgCZEq.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 6">
                 </div>
             </div>
             
@@ -267,7 +267,6 @@
             </div>
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА (РЕКЛАМА) -->
         <div class="sidebar right-sidebar">
             <div class="ad-banner" onclick="window.open('https://vk.com/yakovnikandrov', '_blank')">
                 <img src="https://sun9-51.vkuserphoto.ru/s/v1/ig2/nrUv_LLdkVUMXrrGzMyWPPsnkgYkkKB3hDbdEIZZ_84s92xSjhmQiSkUfnxaCBYgPTGhb2IhfAhQlXrs4KZM1z2m.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&cs=1024x0" alt="Реклама 4">
@@ -283,6 +282,7 @@
     </div>
 
     <script>
+        // Скрипт оставляем без изменений, как в предыдущем сообщении
         const synth = window.speechSynthesis;
         let voices = [];
         let selectedVoice = null;
@@ -346,28 +346,25 @@
             if (isVoiceEnabled) { btn.innerText = '🔊'; btn.classList.remove('muted'); } 
             else { btn.innerText = '🔇'; btn.classList.add('muted'); synth.cancel(); }
         }
-        
         function loadVoices() {
             voices = synth.getVoices();
             const select = document.getElementById('voiceSelect');
             select.innerHTML = '';
-            const ruVoices = voices.filter(v => v.lang.includes('ru') || v.lang.includes('RU'));
-            
+            const ruVoices = voices.filter(v => v.lang.toLowerCase().includes('ru'));
             if (ruVoices.length > 0) {
                 ruVoices.forEach((voice, i) => { 
                     const option = document.createElement('option'); 
                     option.value = i; 
-                    option.textContent = `${voice.name} (${voice.lang})`; 
+                    option.textContent = `${voice.name}`; 
                     select.appendChild(option); 
                 });
                 selectedVoice = ruVoices[0]; 
                 select.value = 0;
                 select.onchange = (e) => { selectedVoice = ruVoices[e.target.value]; };
             } else {
-                select.innerHTML = '<option>Системный</option>';
+                select.innerHTML = '<option>Русский голос не найден</option>';
             }
         }
-        
         synth.onvoiceschanged = loadVoices;
         document.getElementById('rateRange').addEventListener('input', (e) => { document.getElementById('rateVal').innerText = e.target.value; });
         document.getElementById('pitchRange').addEventListener('input', (e) => { document.getElementById('pitchVal').innerText = e.target.value; });
@@ -443,13 +440,6 @@
         }
 
         window.onload = () => { loadVoices(); setTimeout(loadVoices, 1000); };
-
-        // --- PWA SERVICE WORKER REGISTRATION ---
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log("Service Worker зарегистрирован"))
-                .catch(err => console.log("Ошибка регистрации SW", err));
-        }
     </script>
 </body>
 </html>
