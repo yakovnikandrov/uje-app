@@ -283,55 +283,48 @@
             synth.speak(utterance);
         }
 
-        // --- ИСПРАВЛЕННЫЙ ГОЛОСОВОЙ ВВОД (С НАКОПИТЕЛЕМ) ---
+        // --- ФИНАЛЬНЫЙ ГОЛОСОВОЙ ВВОД (РЕЖИМ РАЦИИ) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null; 
-        let isListening = false; 
-        let isIntentionalStop = false;
-        let accumulatedText = ""; // ГЛОБАЛЬНЫЙ АККУМУЛЯТОР ТЕКСТА
+        let isListening = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition(); 
             recognition.lang = 'ru-RU'; 
-            recognition.continuous = true; 
-            recognition.interimResults = true;
-            
+            recognition.continuous = false; // Отключаем бесконечную запись. Работает как рация.
+            recognition.interimResults = true; // Показывать текст в процессе
+
             recognition.onstart = () => { 
                 isListening = true; 
                 document.getElementById('micBtn').classList.add('listening'); 
                 document.getElementById('userInput').placeholder = "Говорите..."; 
-                // При авто-перезапуске забираем текст, который уже есть в поле
-                accumulatedText = document.getElementById('userInput').value;
             };
             
             recognition.onresult = (event) => {
+                let finalTranscript = '';
                 let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                for (let i = 0; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        // Если это финальный кусок, добавляем его в аккумулятор
-                        accumulatedText += event.results[i][0].transcript + ' ';
+                        finalTranscript += event.results[i][0].transcript;
                     } else {
-                        // Если промежуточный, собираем отдельно
                         interimTranscript += event.results[i][0].transcript;
                     }
                 }
-                // В поле пишем: то, что уже накопили + то, что еще меняется (промежуточное)
-                document.getElementById('userInput').value = (accumulatedText + interimTranscript).trim();
+                // Просто записываем финальный и промежуточный результат в поле
+                document.getElementById('userInput').value = (finalTranscript + interimTranscript).trim();
                 autoResize(document.getElementById('userInput'));
             };
             
             recognition.onend = () => {
-                if (!isIntentionalStop && isListening) { 
-                    recognition.start(); // Авто-перезапуск при паузе
-                    return; 
-                }
                 isListening = false; 
                 document.getElementById('micBtn').classList.remove('listening'); 
                 document.getElementById('userInput').placeholder = "Напиши или скажи..."; 
             };
             
             recognition.onerror = (event) => { 
-                if (event.error === 'not-allowed') { alert("Доступ к микрофону запрещен."); isIntentionalStop = true; } 
+                if (event.error === 'not-allowed') { alert("Доступ к микрофону запрещен."); } 
+                isListening = false;
+                document.getElementById('micBtn').classList.remove('listening');
             }
         } else { 
             document.getElementById('micBtn').style.display = 'none'; 
@@ -340,12 +333,9 @@
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
             if (isListening) { 
-                isIntentionalStop = true; 
                 recognition.stop(); 
             } else { 
-                isIntentionalStop = false; 
-                document.getElementById('userInput').value = ''; // Очищаем поле при ручном старте
-                accumulatedText = ""; // Сбрасываем аккумулятор
+                document.getElementById('userInput').value = ""; // Очищаем перед началом
                 recognition.start(); 
             }
         }
@@ -356,9 +346,8 @@
         async function sendRequest() {
             const input = document.getElementById('userInput'); const text = input.value.trim();
             if(!text) return;
-            if (isListening) { isIntentionalStop = true; recognition.stop(); }
+            if (isListening) { recognition.stop(); }
             document.getElementById('header').classList.add('active'); addMessage(text, 'user'); input.value = ''; input.style.height = 'auto'; 
-            accumulatedText = ""; // Сбрасываем аккумулятор после отправки
             
             const loadingTexts = ["УЖЕ делаю...", "УЖЕ заказываю...", "УЖЕ решаю...", "УЖЕ проверяю..."];
             const loadingId = addMessage(loadingTexts[Math.floor(Math.random() * loadingTexts.length)], 'bot loading');
