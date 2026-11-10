@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import uvicorn
@@ -9,7 +8,7 @@ from ai_brain import ask_uje_router
 from memory import init_db, save_fact, get_all_facts
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Убрали строку с StaticFiles, так как папки static больше нет
 templates = Jinja2Templates(directory="templates")
 
 executor = ThreadPoolExecutor(max_workers=4)
@@ -31,7 +30,7 @@ async def get_promo():
     # ВСТАВЬ СЮДА СВОЮ ССЫЛКУ НА КАРТИНКУ!
     promo_data = {
         "active": True, 
-        "image_url": "https://sun9-53.vkuserphoto.ru/s/v1/ig2/Iar_wLzl3QXGfVTTQgJ8s7WG-ealc62pd7qWf2b6BiplZXugbdkZM_z9rpOQ_NO3hpVywKFV8BR7xR77NfAGS3Z8.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640,720x720,1024x1024&from=bu&u=qVNf3at28_Nw0aHMXEsoOEBDtp-oLeT3Gw83_tJSTjo&cs=1024x0", 
+        "image_url": "https://sun9-1.userapi.com/s/v1/ig2/8Y5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5X5.jpg?size=1080x1080&quality=96&crop=0,0,1080,1080&ava=1", 
         "text": "🔥 Закрытый гастроужин 15 ноября. Осталось 3 места! Жми на кнопку ниже."
     }
     return promo_data
