@@ -6,76 +6,74 @@
     <meta name="theme-color" content="#0f0f0f">
     <title>УЖЕ | Твой цифровой помощник</title>
     <style>
-        /* Сброс стилей */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: #0f0f0f;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            height: 100dvh; /* Динамическая высота для мобильных */
-            overflow: hidden;
+            background-color: #0f0f0f; color: white;
+            display: flex; flex-direction: column;
+            height: 100vh; height: 100dvh; overflow: hidden;
         }
-
-        /* Шапка */
-        .header {
-            text-align: center;
-            padding: 20px 10px;
-            flex-shrink: 0;
-            transition: 0.3s;
-        }
-        .header.active {
-            padding: 10px;
-            transform: scale(0.85);
-        }
+        .header { text-align: center; padding: 20px 10px; flex-shrink: 0; transition: 0.3s; }
+        .header.active { padding: 10px; transform: scale(0.85); }
         h1 { font-size: 2.5rem; letter-spacing: 3px; font-weight: 900; }
         p { color: #888; margin-top: 5px; font-size: 0.85rem; }
 
-        /* Чат (занимает все свободное место) */
-        #chat-container {
-            flex: 1;
+        /* --- БЛОК АФИШИ (ФОРМАТ 16:9 С ЗАЩИТОЙ) --- */
+        #promo-banner {
+            display: none;
+            margin: 0 auto 15px auto; 
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #00c853;
+            background: #1a1a1a;
+            flex-shrink: 0;
+            width: 90%;
+            max-width: 450px; 
+            aspect-ratio: 16 / 9; 
+            max-height: 25vh; /* Защита: не больше четверти экрана */
+            position: relative; 
+            cursor: pointer;
+        }
+        #promo-banner img {
             width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 10px 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            height: 100%;
+            object-fit: cover; 
+            display: block;
+        }
+        #promo-text {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.75); 
+            text-align: center;
+            font-size: 0.85rem;
+            color: #fff;
+            backdrop-filter: blur(2px);
         }
 
+        #chat-container {
+            flex: 1; width: 100%; max-width: 800px; margin: 0 auto;
+            padding: 10px 15px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
         .message {
-            padding: 12px 16px;
-            border-radius: 18px;
-            max-width: 85%;
-            line-height: 1.4;
-            animation: fadeIn 0.3s ease-out;
-            white-space: pre-wrap; 
-            font-size: 0.95rem;
+            padding: 12px 16px; border-radius: 18px; max-width: 85%;
+            line-height: 1.4; animation: fadeIn 0.3s ease-out;
+            white-space: pre-wrap; font-size: 0.95rem;
         }
         .user { background-color: #333; align-self: flex-end; border-bottom-right-radius: 4px; }
         .bot { background-color: #1a1a1a; border: 1px solid #00c853; align-self: flex-start; border-bottom-left-radius: 4px; }
 
-        /* Нижняя панель (Кнопки + Ввод) */
         .bottom-panel {
-            flex-shrink: 0;
-            background: #0f0f0f;
-            padding-bottom: env(safe-area-inset-bottom); /* Для айфонов с полоской */
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
+            flex-shrink: 0; background: #0f0f0f;
+            padding-bottom: env(safe-area-inset-bottom);
+            width: 100%; max-width: 800px; margin: 0 auto;
         }
-
-        /* Быстрые кнопки */
         .quick-actions {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding: 10px 15px;
-            scrollbar-width: none;
+            display: flex; gap: 8px; overflow-x: auto;
+            padding: 10px 15px; scrollbar-width: none;
         }
         .quick-actions::-webkit-scrollbar { display: none; }
         .quick-btn {
@@ -83,27 +81,19 @@
             padding: 6px 12px; border-radius: 20px; white-space: nowrap;
             cursor: pointer; font-size: 0.85rem; transition: 0.2s;
         }
-
-        /* Строка ввода */
         .input-area {
-            display: flex;
-            background: #1e1e1e;
-            padding: 6px 6px 6px 15px;
-            border-radius: 30px;
-            margin: 0 15px 10px 15px;
-            border: 1px solid #333;
-            align-items: center;
+            display: flex; background: #1e1e1e;
+            padding: 6px 6px 6px 15px; border-radius: 30px;
+            margin: 0 15px 10px 15px; border: 1px solid #333; align-items: center;
         }
         input[type="text"] {
             flex: 1; background: transparent; border: none; color: white;
             font-size: 1rem; outline: none;
         }
-        
         .btn-circle {
             border: none; border-radius: 50%; width: 40px; height: 40px;
             font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; margin-left: 5px; transition: 0.2s;
-            flex-shrink: 0;
+            align-items: center; justify-content: center; margin-left: 5px; transition: 0.2s; flex-shrink: 0;
         }
         #micBtn { background: #333; color: white; font-size: 1rem; }
         #micBtn.listening { background: #ff5252; animation: pulse 1s infinite; }
@@ -111,11 +101,10 @@
         #voiceToggleBtn { background: #333; color: white; font-size: 1rem; }
         #voiceToggleBtn.muted { color: #ff5252; }
         
-        /* Настройки */
         .settings-btn {
             position: absolute; top: 15px; right: 15px;
             background: transparent; border: none; color: #888;
-            font-size: 1.5rem; cursor: pointer; transition: 0.3s; z-index: 20;
+            font-size: 1.5rem; cursor: pointer; z-index: 20;
         }
         .settings-panel {
             position: absolute; top: 0; right: -100%; width: 280px; height: 100%;
@@ -134,7 +123,6 @@
             background: #ff5252; color: white; border: none;
             padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; margin-top: 10px;
         }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } }
     </style>
@@ -163,6 +151,12 @@
         <h1>УЖЕ</h1>
         <p>Твои желания исполнены до того, как ты успел устать.</p>
     </div>
+
+    <!-- БЛОК АФИШИ -->
+    <div id="promo-banner" onclick="quickAction('Хочу на гастроужин!')">
+        <img id="promo-img" src="" alt="Афиша">
+        <div id="promo-text"></div>
+    </div>
     
     <div id="chat-container"></div>
 
@@ -171,7 +165,8 @@
             <button class="quick-btn" onclick="quickAction('Вызови такси домой')">🚕 Домой</button>
             <button class="quick-btn" onclick="quickAction('Хочу мой обычный кофе')">☕ Мой кофе</button>
             <button class="quick-btn" onclick="quickAction('Что ты обо мне знаешь?')">🧠 Память</button>
-            <button class="quick-btn" onclick="quickAction('Что ты умеешь?')">📋 Помощь</button>
+            <button class="quick-btn" onclick="quickAction('Чем я лучше ИИ?')">👑 Моя мощь</button>
+            <button class="quick-btn" onclick="quickAction('Хочу рассказать о себе')">📝 О себе</button>
         </div>
 
         <div class="input-area">
@@ -183,11 +178,22 @@
     </div>
 
     <script>
-        // --- ЛОГИКА ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ---
         const synth = window.speechSynthesis;
         let voices = [];
         let selectedVoice = null;
         let isVoiceEnabled = true; 
+
+        async function loadPromo() {
+            try {
+                const response = await fetch('/api/promo');
+                const data = await response.json();
+                if (data.active) {
+                    document.getElementById('promo-img').src = data.image_url;
+                    document.getElementById('promo-text').innerText = data.text;
+                    document.getElementById('promo-banner').style.display = 'block'; 
+                }
+            } catch (e) { console.log("Афиша не загружена"); }
+        }
 
         function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
         
@@ -231,13 +237,11 @@
         function speak(text) {
             if (!synth || !isVoiceEnabled) return; 
             synth.cancel();
-            
             const cleanText = text
                 .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '') 
                 .replace(/[*#_~`]/g, '') 
                 .replace(/\s+/g, ' ') 
                 .trim();
-                
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'ru-RU';
             utterance.rate = parseFloat(document.getElementById('rateRange').value);
@@ -319,7 +323,11 @@
             return id;
         }
 
-        window.onload = () => { loadVoices(); setTimeout(loadVoices, 1000); };
+        window.onload = () => { 
+            loadVoices(); 
+            setTimeout(loadVoices, 1000); 
+            loadPromo(); 
+        };
     </script>
 </body>
 </html>
