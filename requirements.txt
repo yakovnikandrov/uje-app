@@ -5,5 +5,6 @@ pydantic
 python-dotenv
 langchain-community
 langchain-core
+requests
 grpcio
 yandexcloud

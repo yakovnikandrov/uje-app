@@ -1,9 +1,21 @@
+# memory.py
 import sqlite3
+import os
 
-DB_NAME = "/data/uje_memory.db"
+# Умный выбор пути:
+# Если это Linux (Amvera) - используем /data/ (там база сохраняется навсегда)
+# Если это Windows (твой компьютер) - используем обычный файл в папке проекта
+if os.name != 'nt': 
+    DB_NAME = "/data/uje_memory.db"
+else:
+    DB_NAME = "uje_memory.db"
 
 def init_db():
     """Создает таблицу для хранения фактов о пользователе"""
+    # Создаем папку /data, если ее нет (для Amvera)
+    if not os.path.exists(os.path.dirname(DB_NAME)) and os.path.dirname(DB_NAME) != "":
+        os.makedirs(os.path.dirname(DB_NAME))
+
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('''
