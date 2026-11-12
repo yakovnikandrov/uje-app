@@ -1,33 +1,37 @@
 # memory.py
 import sqlite3
 import os
+import time
 
-# Умный выбор пути:
-# Если это Linux (Amvera) - используем /data/ (там база сохраняется навсегда)
-# Если это Windows (твой компьютер) - используем обычный файл в папке проекта
 if os.name != 'nt': 
     DB_NAME = "/data/uje_memory.db"
 else:
     DB_NAME = "uje_memory.db"
 
 def init_db():
-    """Создает таблицу для хранения фактов о пользователе"""
-    # Создаем папку /data, если ее нет (для Amvera)
     if not os.path.exists(os.path.dirname(DB_NAME)) and os.path.dirname(DB_NAME) != "":
         os.makedirs(os.path.dirname(DB_NAME))
 
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
+        # Таблица профиля
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS profile (
                 key TEXT PRIMARY KEY,
                 value TEXT
             )
         ''')
+        # НОВОЕ: Таблица ожиданий (чтобы понимать "давай")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pending (
+                action TEXT,
+                params TEXT,
+                expires REAL
+            )
+        ''')
         conn.commit()
 
 def save_fact(key: str, value: str):
-    """Сохраняет или обновляет факт (например, 'home_address' -> 'Ленина 10')"""
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -37,9 +41,32 @@ def save_fact(key: str, value: str):
         conn.commit()
 
 def get_all_facts() -> dict:
-    """Достает все факты о пользователе"""
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT key, value FROM profile')
         rows = cursor.fetchall()
         return {row[0]: row[1] for row in rows}
+
+# НОВЫЕ ФУНКЦИИ ДЛЯ ОЖИДАНИЙ
+def save_pending(action: str, params: str):
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM pending') # Очищаем старое
+        cursor.execute('INSERT INTO pending (action, params, expires) VALUES (?, ?, ?)', 
+                       (action, params, time.time() + 600)) # Живет 10 минут
+        conn.commit()
+
+def get_pending():
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT action, params, expires FROM pending')
+        row = cursor.fetchone()
+        if row and time.time() < row[2]:
+            return {"action": row[0], "params": row[1]}
+        return None
+
+def clear_pending():
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM pending')
+        conn.commit()
