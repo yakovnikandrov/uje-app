@@ -1,14 +1,9 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-langchain-community
-langchain-core
 python-docx
 PyPDF2
 pandas
 python-multipart
 requests
 jinja2
-grpcio
-grpcio-tools
-yandexcloud
