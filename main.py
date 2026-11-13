@@ -1,7 +1,8 @@
 # main.py
 from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import uvicorn
@@ -9,13 +10,16 @@ import asyncio
 import io
 import re
 import random
+import os
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from ai_brain import ask_uje_router, generate_briefing, analyze_file_text, ask_gpt_free
 from memory import init_db, save_fact, get_all_facts, save_pending, get_pending, clear_pending
 from tools import (
     get_real_weather, get_taxi_link, get_news_ufa, get_currency, get_traffic,
-    get_full_route_home, current_zone, geocode_address, PROMO_PLACES, MAP_POIS
+    current_zone, geocode_address, PROMO_PLACES, MAP_POIS
 )
 from responses import RESPONSES, FACT_LABELS, DEFAULT_QUICK_ACTIONS, NAME_BLACKLIST
 
@@ -23,12 +27,16 @@ import docx
 import PyPDF2
 import pandas as pd
 
+load_dotenv()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="templates"), name="static")
 templates = Jinja2Templates(directory="templates")
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -39,6 +47,9 @@ class UserMessage(BaseModel):
 class LocationData(BaseModel):
     lat: float
     lon: float
+
+class TTSRequest(BaseModel):
+    text: str
 
 @app.get("/")
 async def read_root(request: Request):
@@ -55,11 +66,81 @@ async def get_manifest():
 async def get_sw():
     return "self.addEventListener('install', (e) => {}); self.addEventListener('fetch', (e) => {});"
 
+# ============================================================
+# ✅ НОВЫЙ ЭНДПОИНТ: YANDEX SPEECHKIT (TTS)
+# ============================================================
+@app.post("/api/tts")
+async def text_to_speech(req: TTSRequest):
+    text = req.text.strip()
+    if not text:
+        return Response(status_code=400)
+
+    # Очистка от эмодзи
+    clean_text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
+    clean_text = re.sub(r'[*#_~`®©]', '', clean_text)
+    clean_text = clean_text.strip()
+    if not clean_text:
+        return Response(status_code=400)
+
+    folder_id = os.getenv("YC_FOLDER_ID")
+    api_key = os.getenv("YC_API_KEY") # ВАЖНО: Yandex SpeechKit v1 принимает API-ключ
+    # Мы используем API-ключ, который уже есть в .env. Если не сработает, вернемся к IAM.
+    
+    if not api_key or not folder_id:
+        return Response(status_code=500, content="API key or Folder ID missing")
+
+    url = "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize"
+    headers = {
+        "Authorization": f"Api-Key {api_key}"
+    }
+    data = {
+        "text": clean_text[:1000], # Ограничение длины
+        "lang": "ru-RU",
+        "voice": "alena", # Голос Алены
+        "folderId": folder_id,
+        "format": "mp3",
+        "speed": "1.0"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, data=data, timeout=10)
+        if response.status_code == 200:
+            return Response(content=response.content, media_type="audio/mpeg")
+        else:
+            print(f"❌ Ошибка TTS: {response.status_code} - {response.text}")
+            return Response(status_code=500)
+    except Exception as e:
+        print(f"❌ Ошибка запроса к TTS: {e}")
+        return Response(status_code=500)
+
+# ============================================================
+
 @app.post("/api/location")
 async def receive_location(data: LocationData):
     zone = current_zone(data.lat, data.lon)
     save_fact("current_location", f"{data.lat},{data.lon}")
     save_fact("current_zone", zone)
+    
+    pending = get_pending()
+    if pending and pending.get("action") == "wait_geo":
+        clear_pending()
+        dest_text = pending.get("params")
+        
+        start_lat, start_lon = data.lat, data.lon
+        end_lat, end_lon = geocode_address(dest_text + ", Башкортостан")
+        
+        if end_lat:
+            url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+            return {
+                "status": "ok", 
+                "zone": zone,
+                "action": "show_card", 
+                "answer": f"Отлично, вижу тебя! Маршрут до {dest_text} построен. Осталось нажать кнопку «Заказать».", 
+                "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}
+            }
+        else:
+            return {"status": "ok", "zone": zone, "action": "none", "answer": f"Геолокация включена, но я не могу найти адрес «{dest_text}». Попробуй сказать иначе."}
+
     return {"status": "ok", "zone": zone}
 
 @app.get("/api/current_weather")
@@ -71,7 +152,6 @@ async def get_current_weather():
     desc = parts[1].strip() if len(parts) > 1 else ""
     return {"temp": temp, "desc": desc}
 
-# ✅ НОВОЕ: Эндпоинт для получения точек на карте
 @app.get("/api/map_points")
 async def get_map_points():
     return {"points": MAP_POIS}
@@ -130,32 +210,39 @@ async def upload_file(file: UploadFile = File(...)):
 @app.post("/api/ask")
 async def ask_bot(message: UserMessage):
     user_text = message.text.strip()
+    text_lower = user_text.lower()
     history = message.history
     facts = get_all_facts()
 
-    # ✅ НОВОЕ: Обработка клика с карты "Хочу сюда"
     if user_text.startswith("[map:"):
         place_name = user_text.replace("[map:", "").replace("]", "")
-        # Ищем место в базе
         place = next((p for p in MAP_POIS if p["name"] == place_name), None)
         if place:
             if not facts.get("current_location"):
+                save_pending("wait_geo", place_name)
                 return {"answer": f"Отличный выбор! «{place_name}» — прекрасное место. Но чтобы вызвать такси, нажми на компас 🧭, чтобы я знал, откуда ехать.", "action": "none"}
             
-            # Сохраняем как ожидание такси
-            save_pending("taxi_dest", place_name)
-            return {"answer": f"Отличный выбор! «{place_name}» — прекрасное место. Вызываем такси до него? Нажми «Да» для подтверждения.", "action": "none"}
+            loc_str = facts.get("current_location")
+            start_lat, start_lon = map(float, loc_str.split(','))
+            end_lat, end_lon = place["lat"], place["lon"]
+            url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+            return {"answer": f"Маршрут построен: {place_name}. В пути около {random.randint(20, 90)} минут. Осталось нажать кнопку.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": place_name, "button": "Открыть Яндекс Go", "url": url}}
 
-    # ✅ 0. ОБРАБОТКА РЕКЛАМНЫХ КНОПОК
     if user_text.startswith("[promo:"):
         key = user_text.replace("[promo:", "").replace("]", "")
         place = PROMO_PLACES.get(key)
         if place:
-            res = {"answer": place["text"], "action": "none"}
-            if place.get("image"): res["image"] = place["image"]
+            res = {"answer": place["short_text"], "action": "none", "image": place["image"]}
+            res["buttons"] = [{"label": "Подробнее", "action": f"[promo_full:{key}]"}]
+            return res
+            
+    if user_text.startswith("[promo_full:"):
+        key = user_text.replace("[promo_full:", "").replace("]", "")
+        place = PROMO_PLACES.get(key)
+        if place:
+            res = {"answer": place["full_text"], "action": "none", "image": place["image"]}
             return res
 
-    # ✅ 1. ЖЕЛЕЗОБЕТОННЫЙ ОНБОРДИНГ
     if "name" not in facts:
         clean_text = user_text.strip()
         if len(clean_text) <= 30 and "?" not in clean_text:
@@ -170,62 +257,106 @@ async def ask_bot(message: UserMessage):
         save_fact("from_city", city)
         return {"answer": RESPONSES["onboarding_welcome"].format(name=facts.get("name"), city=city), "action": "none"}
 
-    # ========================================================
-    # 2. РЕЖИМ "ПРОВОДНИК" (Ждем "Доехал")
-    # ========================================================
     pending = get_pending()
+    if pending and pending.get("action") == "wait_geo":
+        if "такси" not in text_lower and "автобус" not in text_lower:
+            dest_text = pending.get("params")
+            save_pending("wait_geo", dest_text)
+            return {"answer": f"Я жду, когда ты нажмешь на компас 🧭, чтобы узнать, откуда ехать до «{dest_text}».", "action": "none"}
+
     if pending and pending.get("action") == "route_step_1":
         clear_pending()
-        if "доехал" in user_text.lower() or "на месте" in user_text.lower():
+        if "доехал" in text_lower or "на месте" in text_lower:
             return {"answer": "Огонь! Теперь аккуратно переходи дорогу на другую сторону и ищи остановку 167-го автобуса. Садись и едь до остановки «Гостиный двор». Давай, жду тебя на месте!", "action": "none"}
         else:
             save_pending("route_step_1", "")
             return {"answer": "Ты доехал до Центрального рынка? Напиши «Доехал», и я дам следующий шаг.", "action": "none"}
 
-    # ========================================================
-    # 3. ОБРАБОТКА ТАКСИ
-    # ========================================================
+    if any(word in text_lower for word in ["домой", "дом", "обратно", "в отель"]):
+        loc_str = facts.get("current_location", "")
+        if not loc_str: 
+            save_pending("wait_geo", "домой")
+            return {"answer": "Я не знаю, где ты. Нажми на компас 🧭, чтобы я нашел тебя.", "action": "none"}
+        
+        saved_addr = facts.get("home_address")
+        if saved_addr:
+            start_lat, start_lon = map(float, loc_str.split(','))
+            end_lat, end_lon = geocode_address(saved_addr + ", Уфа")
+            if end_lat:
+                url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+                return {"answer": f"Маршрут до дома построен: {saved_addr}. В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": saved_addr, "button": "Открыть Яндекс Go", "url": url}}
+            else:
+                return {"answer": "Кажется, я не могу найти этот адрес на карте. Попробуй написать по-другому.", "action": "none"}
+        else:
+            save_pending("ask_home_address", "")
+            return {"answer": "А где ты остановился? Назови отель или точный адрес (улица, дом).", "action": "none"}
+
+    if pending and pending.get("action") == "ask_home_address":
+        clear_pending()
+        save_fact("home_address", user_text)
+        loc_str = facts.get("current_location", "")
+        if loc_str:
+            start_lat, start_lon = map(float, loc_str.split(','))
+            end_lat, end_lon = geocode_address(user_text + ", Уфа")
+            if end_lat:
+                url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+                return {"answer": f"Отлично, запомнил: {user_text}. Маршрут построен! В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": user_text, "button": "Открыть Яндекс Go", "url": url}}
+            else:
+                return {"answer": "Кажется, я не могу найти этот адрес на карте. Попробуй написать по-другому.", "action": "none"}
+        return {"answer": "Адрес записал, но я не вижу, где ты находишься. Нажми на компас 🧭!", "action": "none"}
+
+    if "такси" in text_lower:
+        if not facts.get("current_location"): 
+            save_pending("wait_geo", "")
+            return {"answer": "Я не знаю, где ты. Нажми на компас 🧭, чтобы я нашел тебя.", "action": "none"}
+        
+        dest_text = text_lower.replace("вызови", "").replace("такси", "").replace("до", "").replace("в", "").strip()
+        
+        if "стерлитамак" in dest_text or "терм" in dest_text:
+            dest_text = "Термы Стерлитамак"
+        elif not dest_text:
+            save_pending("taxi_dest", "")
+            return {"answer": "Куда едем? (Скажи «Домой», «В отель» или напиши адрес)", "action": "none"}
+
+        loc_str = facts.get("current_location")
+        start_lat, start_lon = map(float, loc_str.split(','))
+        end_lat, end_lon = geocode_address(dest_text + ", Башкортостан")
+        
+        if end_lat:
+            url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+            return {"answer": f"Маршрут построен: {dest_text}. В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}}
+        else:
+            save_pending("taxi_dest", dest_text)
+            return {"answer": f"Не могу найти «{dest_text}». Уточни адрес или напиши по-другому.", "action": "none"}
+
     YES = re.compile(r"^(да|давай|ок|окей|угу|ага|конечно|погнали|делай|го|хорошо)[.!\s]*$", re.I)
-    if pending and pending.get("action") == "taxi_dest":
+    if pending and pending.get("action") == "taxi_dest" and YES.match(user_text):
         clear_pending()
         loc_str = facts.get("current_location", "")
         if not loc_str: return {"answer": "Сначала нажми на компас 🧭, чтобы я знал, откуда ехать.", "action": "none"}
         
+        dest_text = pending.get("params") or "Домой"
         start_lat, start_lon = map(float, loc_str.split(','))
-        dest_text = user_text.strip()
-        if YES.match(dest_text) and pending.get("params"): dest_text = pending["params"]
         
-        if any(word in dest_text.lower() for word in ["дом", "отель", "гостиниц", "хостел"]):
+        if dest_text == "Домой":
             saved_addr = facts.get("home_address")
             if saved_addr: end_lat, end_lon = geocode_address(saved_addr + ", Уфа"); dest_text = saved_addr
             else: return {"answer": "А где вы остановились? Назовите отель или адрес.", "action": "none"}
         else:
             end_lat, end_lon = geocode_address(dest_text + ", Башкортостан")
-            if not end_lat: return {"answer": f"Не могу найти «{dest_text}». Проверьте название.", "action": "none"}
+            if not end_lat: return {"answer": f"Не могу найти «{dest_text}». Проверь название.", "action": "none"}
 
         url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-        return {"answer": f"Маршрут построен: {dest_text}. В пути около {random.randint(20, 90)} минут. Осталось нажать кнопку.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}}
+        return {"answer": f"Маршрут построен: {dest_text}. В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}}
 
-    if "такси" in user_text.lower():
-        if not facts.get("current_location"): return {"answer": "Я не знаю, где ты. Нажми на компас 🧭, чтобы я нашел тебя.", "action": "none"}
-        if "стерлитамак" in user_text.lower() or "терм" in user_text.lower():
-            save_pending("taxi_dest", "Термы Стерлитамак")
-            return {"answer": "Такси до Терм Стерлитамак? Это далеко (около 1,5 часов). Если готовы — нажмите «Да» или напишите другой адрес.", "action": "none"}
-        save_pending("taxi_dest", "")
-        return {"answer": "Куда едем? (Скажи «Домой», «В отель» или напиши адрес)", "action": "none"}
-
-    # ✅ ПРИМЕР МАРШРУТА "ПРОВОДНИК"
-    if "как добраться" in user_text.lower() and "гостиный" in user_text.lower():
+    if "как добраться" in text_lower and "гостиный" in text_lower:
         save_pending("route_step_1", "")
         return {"answer": "О, отличный маршрут! Ты как, на такси хочешь с ветерком, или на автобусе прокатимся, как местные? Напиши «автобус» или «такси».", "action": "none"}
     
-    if "автобус" in user_text.lower():
+    if "автобус" in text_lower:
         save_pending("route_step_1", "")
         return {"answer": "Тогда слушай внимательно. Выходишь с вокзала, идёшь прямо до остановки «ЖД Вокзал». Твой 74-й автобус подъедет примерно через 15 минут. Запрыгивай и едь до остановки «Центральный рынок». Как доедешь — пиши «Доехал», я дам следующий шаг!", "action": "none"}
 
-    # ========================================================
-    # 4. УМНЫЙ ИИ
-    # ========================================================
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(executor, ask_uje_router, user_text, facts, history)
@@ -238,8 +369,19 @@ async def ask_bot(message: UserMessage):
         if action == "call_taxi":
             destination = params.get("destination", "").strip()
             if destination:
-                save_pending("taxi_dest", destination)
-                return {"answer": f"Такси до «{destination}»? Нажмите «Да» для подтверждения.", "action": "none"}
+                loc_str = facts.get("current_location", "")
+                if not loc_str: 
+                    save_pending("wait_geo", destination)
+                    return {"answer": "Сначала нажми на компас 🧭, чтобы я знал, откуда ехать.", "action": "none"}
+                
+                start_lat, start_lon = map(float, loc_str.split(','))
+                end_lat, end_lon = geocode_address(destination + ", Башкортостан")
+                if end_lat:
+                    url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+                    return {"answer": f"Маршрут построен: {destination}. В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": destination, "button": "Открыть Яндекс Go", "url": url}}
+                else:
+                    save_pending("taxi_dest", destination)
+                    return {"answer": f"Не могу найти «{destination}». Уточни адрес.", "action": "none"}
             save_pending("taxi_dest", "")
             return {"answer": "Куда едем?", "action": "none"}
         else:
@@ -252,3 +394,6 @@ async def ask_bot(message: UserMessage):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
