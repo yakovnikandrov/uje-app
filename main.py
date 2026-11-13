@@ -29,7 +29,7 @@ import pandas as pd
 
 load_dotenv()
 
-ASSET_VERSION = "2.2" # ✅ ОБНОВЛЕНО ДЛЯ СБРОСА КЭША
+ASSET_VERSION = "2.3" # ✅ ОБНОВЛЕНО (СБРОС КЭША)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,11 +55,7 @@ class TTSRequest(BaseModel):
 
 @app.get("/")
 async def read_root(request: Request):
-    response = templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"asset_version": ASSET_VERSION}
-    )
+    response = templates.TemplateResponse(request=request, name="index.html", context={"asset_version": ASSET_VERSION})
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
@@ -76,11 +72,9 @@ async def get_sw():
 const CACHE_NAME = 'bashgid-v{ASSET_VERSION}';
 self.addEventListener('install', (e) => {{ self.skipWaiting(); }});
 self.addEventListener('activate', (e) => {{
-    e.waitUntil(
-        caches.keys().then((names) => Promise.all(
-            names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
-        )).then(() => self.clients.claim())
-    );
+    e.waitUntil(caches.keys().then((names) => Promise.all(
+        names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+    )).then(() => self.clients.claim()));
 }});
 self.addEventListener('fetch', (e) => {{
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
@@ -88,7 +82,6 @@ self.addEventListener('fetch', (e) => {{
 """
     return Response(content=sw_code, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
-# ✅ НОВЫЙ ЭНДПОИНТ ДЛЯ СБРОСА ПАМЯТИ
 @app.post("/api/reset")
 async def reset_memory():
     clear_all_facts()
@@ -98,32 +91,25 @@ async def reset_memory():
 async def text_to_speech(req: TTSRequest):
     text = req.text.strip()
     if not text: return Response(status_code=400)
-
     clean_text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
     clean_text = re.sub(r'[*#_~`®©]', '', clean_text).strip()
     if not clean_text: return Response(status_code=400)
 
     folder_id = os.getenv("YC_FOLDER_ID")
     api_key = os.getenv("YC_API_KEY")
-    
-    if not api_key or not folder_id:
-        return Response(status_code=500, content="API key or Folder ID missing")
+    if not api_key or not folder_id: return Response(status_code=500)
 
     url = "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize"
     headers = {"Authorization": f"Api-Key {api_key}"}
-    data = {
-        "text": clean_text[:1000], "lang": "ru-RU", "voice": "alena",
-        "folderId": folder_id, "format": "mp3", "speed": "1.0"
-    }
+    data = {"text": clean_text[:1000], "lang": "ru-RU", "voice": "alena", "folderId": folder_id, "format": "mp3", "speed": "1.0"}
 
     try:
         response = requests.post(url, headers=headers, data=data, timeout=10)
-        if response.status_code == 200:
-            return Response(content=response.content, media_type="audio/mpeg")
+        if response.status_code == 200: return Response(content=response.content, media_type="audio/mpeg")
         return Response(status_code=500)
-    except Exception:
-        return Response(status_code=500)
+    except Exception: return Response(status_code=500)
 
+# ✅ ИСПРАВЛЕННАЯ ГЕОЛОКАЦИЯ
 @app.post("/api/location")
 async def receive_location(data: LocationData):
     zone = current_zone(data.lat, data.lon)
@@ -134,17 +120,29 @@ async def receive_location(data: LocationData):
     if pending and pending.get("action") == "wait_geo":
         clear_pending()
         dest_text = pending.get("params")
+        
+        # Если едем домой
+        if dest_text == "домой":
+            facts = get_all_facts()
+            saved_addr = facts.get("home_address")
+            if saved_addr:
+                start_lat, start_lon = data.lat, data.lon
+                end_lat, end_lon = geocode_address(saved_addr + ", Уфа")
+                if end_lat:
+                    url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
+                    return {"status": "ok", "zone": zone, "action": "show_card", "answer": f"Вижу тебя! Маршрут до дома ({saved_addr}) построен. Осталось нажать кнопку.", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": saved_addr, "button": "Открыть Яндекс Go", "url": url}}
+            else:
+                save_pending("ask_home_address", "")
+                return {"status": "ok", "zone": zone, "action": "none", "answer": "Вижу тебя! А где ты остановился? Назови отель или точный адрес."}
+        
+        # Если едем в конкретное место
         start_lat, start_lon = data.lat, data.lon
         end_lat, end_lon = geocode_address(dest_text + ", Башкортостан")
-        
         if end_lat:
             url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-            return {
-                "status": "ok", "zone": zone, "action": "show_card", 
-                "answer": f"Отлично, вижу тебя! Маршрут до {dest_text} построен. Осталось нажать кнопку «Заказать».", 
-                "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}
-            }
-        return {"status": "ok", "zone": zone, "action": "none", "answer": f"Геолокация включена, но я не могу найти адрес «{dest_text}». Попробуй сказать иначе."}
+            return {"status": "ok", "zone": zone, "action": "show_card", "answer": f"Отлично, вижу тебя! Маршрут до {dest_text} построен. Осталось нажать кнопку.", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}}
+        return {"status": "ok", "zone": zone, "action": "none", "answer": f"Вижу тебя! Но не могу найти адрес «{dest_text}»."}
+
     return {"status": "ok", "zone": zone}
 
 @app.get("/api/current_weather")
@@ -152,13 +150,10 @@ async def get_current_weather():
     loop = asyncio.get_running_loop()
     weather = await loop.run_in_executor(executor, get_real_weather, "Уфа")
     parts = weather.split(',')
-    temp = parts[0].strip() if parts else "--°"
-    desc = parts[1].strip() if len(parts) > 1 else ""
-    return {"temp": temp, "desc": desc}
+    return {"temp": parts[0].strip() if parts else "--°", "desc": parts[1].strip() if len(parts) > 1 else ""}
 
 @app.get("/api/map_points")
-async def get_map_points():
-    return {"points": MAP_POIS}
+async def get_map_points(): return {"points": MAP_POIS}
 
 @app.get("/api/briefing")
 async def get_briefing():
@@ -180,8 +175,7 @@ async def get_status():
         greeting = RESPONSES["onboarding_hello"]
         placeholder = RESPONSES["input_placeholder_empty"]
     else:
-        name = facts.get("name", "гость")
-        greeting = RESPONSES["greeting_return"].format(name=name)
+        greeting = RESPONSES["greeting_return"].format(name=facts.get("name", "гость"))
         placeholder = RESPONSES["input_placeholder_ready"]
     return {"is_new": is_new, "greeting": greeting, "placeholder": placeholder}
 
@@ -189,7 +183,7 @@ async def get_status():
 async def upload_file(file: UploadFile = File(...)):
     MAX_UPLOAD = 5 * 1024 * 1024
     raw = await file.read(MAX_UPLOAD + 1)
-    if len(raw) > MAX_UPLOAD: return {"answer": "⚠️ Файл слишком большой (макс. 5 МБ).", "action": "none"}
+    if len(raw) > MAX_UPLOAD: return {"answer": "⚠️ Файл слишком большой.", "action": "none"}
     text_content = ""
     try:
         if file.filename.endswith(".docx"):
@@ -208,8 +202,7 @@ async def upload_file(file: UploadFile = File(...)):
         loop = asyncio.get_running_loop()
         analysis = await loop.run_in_executor(executor, analyze_file_text, text_content, "гид", file.filename)
         return {"answer": analysis, "action": "none"}
-    except Exception:
-        return {"answer": "⚠️ Ошибка при чтении файла.", "action": "none"}
+    except Exception: return {"answer": "⚠️ Ошибка при чтении файла.", "action": "none"}
 
 @app.post("/api/ask")
 async def ask_bot(message: UserMessage):
@@ -230,7 +223,7 @@ async def ask_bot(message: UserMessage):
             start_lat, start_lon = map(float, loc_str.split(','))
             end_lat, end_lon = place["lat"], place["lon"]
             url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-            return {"answer": f"Маршрут построен: {place_name}. В пути около {random.randint(20, 90)} минут. Осталось нажать кнопку.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": place_name, "button": "Открыть Яндекс Go", "url": url}}
+            return {"answer": f"Маршрут построен: {place_name}. В пути около {random.randint(20, 90)} минут.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": place_name, "button": "Открыть Яндекс Go", "url": url}}
 
     if user_text.startswith("[promo:"):
         key = user_text.replace("[promo:", "").replace("]", "")
@@ -243,9 +236,7 @@ async def ask_bot(message: UserMessage):
     if user_text.startswith("[promo_full:"):
         key = user_text.replace("[promo_full:", "").replace("]", "")
         place = PROMO_PLACES.get(key)
-        if place:
-            res = {"answer": place["full_text"], "action": "none", "image": place["image"]}
-            return res
+        if place: return {"answer": place["full_text"], "action": "none", "image": place["image"]}
 
     if "name" not in facts:
         clean_text = user_text.strip()
@@ -253,8 +244,7 @@ async def ask_bot(message: UserMessage):
             name = clean_text.split()[0].capitalize() 
             save_fact("name", name)
             return {"answer": RESPONSES["onboarding_ask_city"].format(name=name), "action": "none"}
-        else:
-            return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
+        return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
 
     if "from_city" not in facts:
         city = user_text.capitalize()
@@ -393,7 +383,6 @@ async def ask_bot(message: UserMessage):
             return {"answer": reply, "action": "none"}
 
     except Exception as e:
-        print(f"❌ Ошибка в /api/ask: {e}")
         return {"answer": "У меня тут небольшие помехи. Давай еще раз попробуем?", "action": "none"}
 
 if __name__ == "__main__":

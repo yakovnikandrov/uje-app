@@ -87,7 +87,6 @@
     </style>
 </head>
 <body>
-    <!-- ✅ КНОПКА СБРОСА ПАМЯТИ -->
     <button onclick="resetBot()" style="position: absolute; top: 15px; right: 50px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
 
     <header class="header">
@@ -146,7 +145,6 @@
             navigator.serviceWorker.register('/sw.js?v={{ asset_version }}').catch(e => console.warn('SW:', e));
         }
 
-        // ✅ ФУНКЦИЯ СБРОСА
         async function resetBot() {
             if(confirm("Сбросить память бота? Он забудет ваше имя и город.")) {
                 await fetch('/api/reset', { method: 'POST' });
@@ -179,7 +177,7 @@
         async function speak(text) {
             if (!isVoiceEnabled) return;
             if (isListening && recognition) {
-                recognition.stop(); // Принудительно выключаем микрофон
+                recognition.stop(); 
             }
 
             const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[*#_~`®©]/g, '').replace(/\s+/g, ' ').trim();
@@ -235,7 +233,6 @@
                 userInputField.style.height = 'auto';
                 userInputField.style.height = userInputField.scrollHeight + 'px';
 
-                // ✅ АВТООТПРАВКА ЧЕРЕЗ 4 СЕКУНДЫ
                 if (silenceTimer) clearTimeout(silenceTimer);
                 if (userInputField.value.length > 0) {
                     silenceTimer = setTimeout(() => {
@@ -504,12 +501,14 @@
 
         async function getLocation() {
             if (navigator.geolocation) {
+                const geoBtn = document.getElementById('geoBtn');
+                geoBtn.style.display = 'none'; // Скрываем сразу
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     try {
                         const res = await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) });
                         const data = await res.json();
-                        document.getElementById('geoBtn').style.display = 'none';
                         
+                        // Показываем ответ только если он есть
                         if (data.answer) {
                             const msgId = addMessage(data.answer, 'bot');
                             speak(data.answer);
@@ -527,7 +526,10 @@
                             speak(`Геолокация включена! ${zoneText}.`);
                         }
                     } catch (e) { console.error(e); }
-                }, (error) => alert("Вы отклонили геолокацию."));
+                }, (error) => { 
+                    alert("Вы отклонили геолокацию. Включите GPS в настройках телефона."); 
+                    geoBtn.style.display = 'flex'; // Показываем кнопку обратно
+                });
             }
         }
     </script>
