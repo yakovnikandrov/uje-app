@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#005BBB">
     <title>БАШГИД | Твой гид по Башкирии</title>
-    <link rel="manifest" href="/manifest.json">
+    
+    <!-- ✅ ВЕРСИОНИРОВАНИЕ МАНИФЕСТА -->
+    <link rel="manifest" href="/manifest.json?v={{ asset_version }}">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -132,7 +134,11 @@
     </div>
 
     <script>
-        // --- YANDEX SPEECHKIT TTS (ЗАМЕНА SPEECH SYNTHESIS) ---
+        // ✅ РЕГИСТРАЦИЯ SERVICE WORKER С ВЕРСИЕЙ
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js?v={{ asset_version }}').catch(e => console.warn('SW:', e));
+        }
+
         const audioPlayer = new Audio();
         let isVoiceEnabled = true;
         const userInputField = document.getElementById('userInput');
@@ -157,14 +163,7 @@
 
         async function speak(text) {
             if (!isVoiceEnabled) return;
-            
-            // Очистка текста от эмодзи
-            const cleanText = text
-                .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-                .replace(/[*#_~`®©]/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
-            
+            const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[*#_~`®©]/g, '').replace(/\s+/g, ' ').trim();
             if (!cleanText) return;
 
             try {
@@ -173,18 +172,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: cleanText })
                 });
-
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = URL.createObjectURL(blob);
                     audioPlayer.src = url;
                     audioPlayer.play();
-                } else {
-                    console.error("Ошибка TTS:", response.status);
                 }
-            } catch (e) {
-                console.error("Ошибка запроса к TTS:", e);
-            }
+            } catch (e) { console.error("Ошибка TTS:", e); }
         }
 
         function toggleVoice() { 
@@ -194,7 +188,6 @@
             else { btn.innerText = '🔇'; btn.classList.add('muted'); audioPlayer.pause(); audioPlayer.currentTime = 0; } 
         }
 
-        // --- ЛОГИКА МИКРОФОНА ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let isListening = false;
@@ -216,15 +209,10 @@
             recognition.onresult = (event) => {
                 let finalTranscript = '';
                 let interimTranscript = '';
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
                 }
-
                 userInputField.value = (finalTranscript + interimTranscript).trim();
                 userInputField.style.height = 'auto';
                 userInputField.style.height = userInputField.scrollHeight + 'px';
@@ -247,7 +235,7 @@
             };
 
             recognition.onerror = (event) => {
-                if (event.error === 'not-allowed') alert("Доступ к микрофону запрещен. Чтобы включить его, нужен безопасный протокол (HTTPS).");
+                if (event.error === 'not-allowed') alert("Доступ к микрофону запрещен.");
                 isListening = false;
                 document.getElementById('micBtn').classList.remove('listening');
             };
@@ -471,12 +459,9 @@
                     pendingVoiceText = data.greeting; 
                 } else {
                     const loadingId = addMessage("БашГид просыпается...", 'bot');
-                    
                     const briefRes = await fetch('/api/briefing');
                     const briefData = await briefRes.json();
-                    
                     document.getElementById(loadingId).remove(); 
-                    
                     if (briefData.answer) {
                         addMessage(briefData.answer, 'bot');
                         speak(briefData.answer); 
@@ -518,7 +503,6 @@
                         if (data.answer) {
                             const msgId = addMessage(data.answer, 'bot');
                             speak(data.answer);
-                            
                             if (data.action === "show_card" && data.card) {
                                 const msgDiv = document.getElementById(msgId);
                                 const card = data.card;

@@ -29,6 +29,9 @@ import pandas as pd
 
 load_dotenv()
 
+# ✅ ВЕРСИЯ СТАТИКИ (меняй при каждом обновлении сайта)
+ASSET_VERSION = "2.0"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -51,52 +54,65 @@ class LocationData(BaseModel):
 class TTSRequest(BaseModel):
     text: str
 
+# ✅ ОТДАЧА HTML С ЗАГОЛОВКАМИ NO-CACHE И ВЕРСИЕЙ
 @app.get("/")
 async def read_root(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={})
+    response = templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"asset_version": ASSET_VERSION}
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/manifest.json")
 async def get_manifest():
     return JSONResponse({
         "name": "БАШГИД | Гид по Башкирии", "short_name": "БАШГИД", "start_url": "/",
         "display": "standalone", "background_color": "#005BBB", "theme_color": "#005BBB",
-    })
+    }, headers={"Cache-Control": "no-cache"})
 
 @app.get("/sw.js")
 async def get_sw():
-    return "self.addEventListener('install', (e) => {}); self.addEventListener('fetch', (e) => {});"
+    sw_code = f"""
+const CACHE_NAME = 'bashgid-v{ASSET_VERSION}';
+self.addEventListener('install', (e) => {{ self.skipWaiting(); }});
+self.addEventListener('activate', (e) => {{
+    e.waitUntil(
+        caches.keys().then((names) => Promise.all(
+            names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+        )).then(() => self.clients.claim())
+    );
+}});
+self.addEventListener('fetch', (e) => {{
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+}});
+"""
+    return Response(content=sw_code, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
-# ============================================================
-# ✅ НОВЫЙ ЭНДПОИНТ: YANDEX SPEECHKIT (TTS)
-# ============================================================
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest):
     text = req.text.strip()
-    if not text:
-        return Response(status_code=400)
+    if not text: return Response(status_code=400)
 
-    # Очистка от эмодзи
     clean_text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
-    clean_text = re.sub(r'[*#_~`®©]', '', clean_text)
-    clean_text = clean_text.strip()
-    if not clean_text:
-        return Response(status_code=400)
+    clean_text = re.sub(r'[*#_~`®©]', '', clean_text).strip()
+    if not clean_text: return Response(status_code=400)
 
     folder_id = os.getenv("YC_FOLDER_ID")
-    api_key = os.getenv("YC_API_KEY") # ВАЖНО: Yandex SpeechKit v1 принимает API-ключ
-    # Мы используем API-ключ, который уже есть в .env. Если не сработает, вернемся к IAM.
+    api_key = os.getenv("YC_API_KEY")
     
     if not api_key or not folder_id:
         return Response(status_code=500, content="API key or Folder ID missing")
 
     url = "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize"
-    headers = {
-        "Authorization": f"Api-Key {api_key}"
-    }
+    headers = {"Authorization": f"Api-Key {api_key}"}
     data = {
-        "text": clean_text[:1000], # Ограничение длины
+        "text": clean_text[:1000],
         "lang": "ru-RU",
-        "voice": "alena", # Голос Алены
+        "voice": "alena",
         "folderId": folder_id,
         "format": "mp3",
         "speed": "1.0"
@@ -112,8 +128,6 @@ async def text_to_speech(req: TTSRequest):
     except Exception as e:
         print(f"❌ Ошибка запроса к TTS: {e}")
         return Response(status_code=500)
-
-# ============================================================
 
 @app.post("/api/location")
 async def receive_location(data: LocationData):
@@ -392,8 +406,6 @@ async def ask_bot(message: UserMessage):
         print(f"❌ Ошибка в /api/ask: {e}")
         return {"answer": "У меня тут небольшие помехи. Давай еще раз попробуем?", "action": "none"}
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
