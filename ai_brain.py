@@ -25,7 +25,8 @@ def ask_gpt_free(user_text: str, history: list = None) -> str:
     try:
         response = llm.invoke(messages)
         return response.content.strip().replace("**", "")
-    except Exception:
+    except Exception as e:
+        print(f"❌ Ошибка GPT Free: {e}")
         return "Слушай, у меня тут небольшие помехи со связью. Давай еще раз попробуем?"
 
 def ask_uje_router(user_text: str, user_facts: dict, history: list = None) -> dict:
@@ -33,7 +34,6 @@ def ask_uje_router(user_text: str, user_facts: dict, history: list = None) -> di
     if not facts_str: facts_str = "Пока ничего не известно."
     
     system_prompt = ROUTER_SYSTEM_PROMPT.replace("{facts}", facts_str)
-    # ✅ ДОБАВЛЕНО ЖЕСТКОЕ ПРАВИЛО, ЧТОБЫ НЕ ЗАЦИКЛИВАЛО
     system_prompt += "\nВНИМАНИЕ: Если в фактах УЖЕ есть имя и город пользователя, НИКОГДА не присылай их снова в new_facts. Просто общайся."
     
     messages = [SystemMessage(content=system_prompt)]
@@ -63,20 +63,26 @@ def ask_uje_router(user_text: str, user_facts: dict, history: list = None) -> di
             
         return parsed_obj
     except Exception as e:
+        print(f"❌ Ошибка роутера: {e}")
         return {"action": "chat", "params": {"reply": ask_gpt_free(user_text, history)}, "new_facts": {}}
 
 def generate_briefing(weather: str, traffic: str, currency: str, news: str, name: str = "друг") -> str:
     prompt = BRIEFING_PROMPT.format(weather=weather, traffic=traffic, currency=currency, news=news)
     try:
-        response = llm.invoke([SystemMessage(content=prompt)])
+        # ✅ ИСПОЛЬЗУЕМ HumanMessage ВМЕСТО SystemMessage
+        response = llm.invoke([HumanMessage(content=prompt)])
         return response.content.strip().replace("**", "")
-    except Exception:
+    except Exception as e:
+        print(f"❌ Ошибка брифинга: {e}")
         return f"Доброе утро, {name}. Погода: {weather}."
 
 def analyze_file_text(file_text: str, user_role: str, filename: str) -> str:
-    prompt = FILE_ANALYSIS_PROMPT.format(role=user_role, filename=filename, text=file_text[:4000])
+    # ✅ Убрали role из форматирования, так как его нет в промпте
+    prompt = FILE_ANALYSIS_PROMPT.format(filename=filename, text=file_text[:4000])
     try:
-        response = llm.invoke([SystemMessage(content=prompt)])
+        # ✅ ИСПОЛЬЗУЕМ HumanMessage
+        response = llm.invoke([HumanMessage(content=prompt)])
         return response.content.strip().replace("**", "")
-    except Exception:
+    except Exception as e:
+        print(f"❌ Ошибка анализа файла: {e}")
         return "Я прочитал файл, но не смог его проанализировать."

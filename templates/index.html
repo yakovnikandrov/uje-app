@@ -70,13 +70,24 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 107, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0); } }
 
+        /* ✅ ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ ТЕЛЕФОНОВ (ЧТОБЫ КАРТА НЕ ЗАКРЫВАЛА ГЕРБ) */
         @media (max-width: 900px) {
             .sidebar { display: none; }
             .mobile-promo { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; scrollbar-width: none; background: #f4f6f8; }
             .mobile-promo::-webkit-scrollbar { display: none; }
             .mobile-promo .promo-card { min-width: 130px; flex-shrink: 0; padding: 8px; }
             .mobile-promo .promo-img { height: 60px; font-size: 1.5rem; }
-            .header-emblem { height: 50px; }
+            
+            /* Уменьшаем шапку, чтобы всё влезло */
+            .header { padding: 5px 10px; min-height: 60px; }
+            .logo { font-size: 1.1rem; gap: 5px; }
+            .logo svg { width: 20px; height: 20px; }
+            .header-emblem { height: 40px; }
+            .header-info { gap: 8px; font-size: 0.8rem; }
+            .map-toggle-btn { padding: 4px 8px; font-size: 0.75rem; }
+            
+            /* Скрываем часы на телефоне, так как они занимают много места */
+            #clock { display: none; } 
         }
         @media (min-width: 901px) { .mobile-promo { display: none; } }
     </style>
