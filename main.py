@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from ai_brain import ask_uje_router, generate_briefing, analyze_file_text, ask_gpt_free
-from memory import init_db, save_fact, get_all_facts, save_pending, get_pending, clear_pending
+from memory import init_db, save_fact, get_all_facts, save_pending, get_pending, clear_pending, clear_all_facts
 from tools import (
     get_real_weather, get_taxi_link, get_news_ufa, get_currency, get_traffic,
     current_zone, geocode_address, PROMO_PLACES, MAP_POIS
@@ -29,8 +29,7 @@ import pandas as pd
 
 load_dotenv()
 
-# ✅ ВЕРСИЯ СТАТИКИ (меняй при каждом обновлении сайта)
-ASSET_VERSION = "2.1"
+ASSET_VERSION = "2.2" # ✅ ОБНОВЛЕНО ДЛЯ СБРОСА КЭША
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,7 +53,6 @@ class LocationData(BaseModel):
 class TTSRequest(BaseModel):
     text: str
 
-# ✅ ОТДАЧА HTML С ЗАГОЛОВКАМИ NO-CACHE И ВЕРСИЕЙ
 @app.get("/")
 async def read_root(request: Request):
     response = templates.TemplateResponse(
@@ -63,8 +61,6 @@ async def read_root(request: Request):
         context={"asset_version": ASSET_VERSION}
     )
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
     return response
 
 @app.get("/manifest.json")
@@ -92,6 +88,12 @@ self.addEventListener('fetch', (e) => {{
 """
     return Response(content=sw_code, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
+# ✅ НОВЫЙ ЭНДПОИНТ ДЛЯ СБРОСА ПАМЯТИ
+@app.post("/api/reset")
+async def reset_memory():
+    clear_all_facts()
+    return {"status": "ok", "message": "Memory cleared"}
+
 @app.post("/api/tts")
 async def text_to_speech(req: TTSRequest):
     text = req.text.strip()
@@ -110,23 +112,16 @@ async def text_to_speech(req: TTSRequest):
     url = "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize"
     headers = {"Authorization": f"Api-Key {api_key}"}
     data = {
-        "text": clean_text[:1000],
-        "lang": "ru-RU",
-        "voice": "alena",
-        "folderId": folder_id,
-        "format": "mp3",
-        "speed": "1.0"
+        "text": clean_text[:1000], "lang": "ru-RU", "voice": "alena",
+        "folderId": folder_id, "format": "mp3", "speed": "1.0"
     }
 
     try:
         response = requests.post(url, headers=headers, data=data, timeout=10)
         if response.status_code == 200:
             return Response(content=response.content, media_type="audio/mpeg")
-        else:
-            print(f"❌ Ошибка TTS: {response.status_code} - {response.text}")
-            return Response(status_code=500)
-    except Exception as e:
-        print(f"❌ Ошибка запроса к TTS: {e}")
+        return Response(status_code=500)
+    except Exception:
         return Response(status_code=500)
 
 @app.post("/api/location")
@@ -139,22 +134,17 @@ async def receive_location(data: LocationData):
     if pending and pending.get("action") == "wait_geo":
         clear_pending()
         dest_text = pending.get("params")
-        
         start_lat, start_lon = data.lat, data.lon
         end_lat, end_lon = geocode_address(dest_text + ", Башкортостан")
         
         if end_lat:
             url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
             return {
-                "status": "ok", 
-                "zone": zone,
-                "action": "show_card", 
+                "status": "ok", "zone": zone, "action": "show_card", 
                 "answer": f"Отлично, вижу тебя! Маршрут до {dest_text} построен. Осталось нажать кнопку «Заказать».", 
                 "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_text, "button": "Открыть Яндекс Go", "url": url}
             }
-        else:
-            return {"status": "ok", "zone": zone, "action": "none", "answer": f"Геолокация включена, но я не могу найти адрес «{dest_text}». Попробуй сказать иначе."}
-
+        return {"status": "ok", "zone": zone, "action": "none", "answer": f"Геолокация включена, но я не могу найти адрес «{dest_text}». Попробуй сказать иначе."}
     return {"status": "ok", "zone": zone}
 
 @app.get("/api/current_weather")

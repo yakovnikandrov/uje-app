@@ -14,14 +14,12 @@ def init_db():
 
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        # Таблица профиля
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS profile (
                 key TEXT PRIMARY KEY,
                 value TEXT
             )
         ''')
-        # НОВОЕ: Таблица ожиданий (чтобы понимать "давай")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pending (
                 action TEXT,
@@ -47,13 +45,20 @@ def get_all_facts() -> dict:
         rows = cursor.fetchall()
         return {row[0]: row[1] for row in rows}
 
-# НОВЫЕ ФУНКЦИИ ДЛЯ ОЖИДАНИЙ
+# ✅ НОВАЯ ФУНКЦИЯ ДЛЯ СБРОСА ПАМЯТИ
+def clear_all_facts():
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM profile')
+        cursor.execute('DELETE FROM pending')
+        conn.commit()
+
 def save_pending(action: str, params: str):
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM pending') # Очищаем старое
+        cursor.execute('DELETE FROM pending')
         cursor.execute('INSERT INTO pending (action, params, expires) VALUES (?, ?, ?)', 
-                       (action, params, time.time() + 600)) # Живет 10 минут
+                       (action, params, time.time() + 600))
         conn.commit()
 
 def get_pending():

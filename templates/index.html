@@ -6,7 +6,6 @@
     <meta name="theme-color" content="#005BBB">
     <title>БАШГИД | Твой гид по Башкирии</title>
     
-    <!-- ✅ ВЕРСИОНИРОВАНИЕ МАНИФЕСТА -->
     <link rel="manifest" href="/manifest.json?v={{ asset_version }}">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -70,29 +69,27 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 107, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0); } }
 
-        /* ✅ ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ ТЕЛЕФОНОВ (ЧТОБЫ КАРТА НЕ ЗАКРЫВАЛА ГЕРБ) */
         @media (max-width: 900px) {
             .sidebar { display: none; }
             .mobile-promo { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; scrollbar-width: none; background: #f4f6f8; }
             .mobile-promo::-webkit-scrollbar { display: none; }
             .mobile-promo .promo-card { min-width: 130px; flex-shrink: 0; padding: 8px; }
             .mobile-promo .promo-img { height: 60px; font-size: 1.5rem; }
-            
-            /* Уменьшаем шапку, чтобы всё влезло */
             .header { padding: 5px 10px; min-height: 60px; }
             .logo { font-size: 1.1rem; gap: 5px; }
             .logo svg { width: 20px; height: 20px; }
             .header-emblem { height: 40px; }
             .header-info { gap: 8px; font-size: 0.8rem; }
             .map-toggle-btn { padding: 4px 8px; font-size: 0.75rem; }
-            
-            /* Скрываем часы на телефоне, так как они занимают много места */
             #clock { display: none; } 
         }
         @media (min-width: 901px) { .mobile-promo { display: none; } }
     </style>
 </head>
 <body>
+    <!-- ✅ КНОПКА СБРОСА ПАМЯТИ -->
+    <button onclick="resetBot()" style="position: absolute; top: 15px; right: 50px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
+
     <header class="header">
         <div class="logo">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg">
@@ -145,9 +142,16 @@
     </div>
 
     <script>
-        // ✅ РЕГИСТРАЦИЯ SERVICE WORKER С ВЕРСИЕЙ
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js?v={{ asset_version }}').catch(e => console.warn('SW:', e));
+        }
+
+        // ✅ ФУНКЦИЯ СБРОСА
+        async function resetBot() {
+            if(confirm("Сбросить память бота? Он забудет ваше имя и город.")) {
+                await fetch('/api/reset', { method: 'POST' });
+                location.reload();
+            }
         }
 
         const audioPlayer = new Audio();
@@ -174,6 +178,10 @@
 
         async function speak(text) {
             if (!isVoiceEnabled) return;
+            if (isListening && recognition) {
+                recognition.stop(); // Принудительно выключаем микрофон
+            }
+
             const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[*#_~`®©]/g, '').replace(/\s+/g, ' ').trim();
             if (!cleanText) return;
 
@@ -203,7 +211,6 @@
         let recognition = null;
         let isListening = false;
         let silenceTimer = null;
-        let autoListenTimeout = null;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -228,6 +235,7 @@
                 userInputField.style.height = 'auto';
                 userInputField.style.height = userInputField.scrollHeight + 'px';
 
+                // ✅ АВТООТПРАВКА ЧЕРЕЗ 4 СЕКУНДЫ
                 if (silenceTimer) clearTimeout(silenceTimer);
                 if (userInputField.value.length > 0) {
                     silenceTimer = setTimeout(() => {
@@ -235,7 +243,7 @@
                             recognition.stop();
                             if (userInputField.value.trim()) sendRequest();
                         }
-                    }, 5000); 
+                    }, 4000); 
                 }
             };
 
@@ -346,15 +354,6 @@
                 
                 if (data.answer.includes("компас") || data.answer.includes("координат")) {
                     document.getElementById('geoBtn').style.display = 'flex';
-                }
-
-                if (recognition) {
-                    clearTimeout(autoListenTimeout);
-                    autoListenTimeout = setTimeout(() => {
-                        if (!isListening && !userInputField.value.trim()) {
-                            try { recognition.start(); } catch(e) {}
-                        }
-                    }, 1000); 
                 }
 
             } catch (e) { 
