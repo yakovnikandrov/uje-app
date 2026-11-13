@@ -30,7 +30,7 @@ import pandas as pd
 load_dotenv()
 
 # ✅ ВЕРСИЯ СТАТИКИ (меняй при каждом обновлении сайта)
-ASSET_VERSION = "2.0"
+ASSET_VERSION = "2.1"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

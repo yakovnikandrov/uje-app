@@ -9,3 +9,6 @@ pandas
 python-multipart
 requests
 jinja2
+grpcio
+grpcio-tools
+yandexcloud
