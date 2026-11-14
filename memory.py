@@ -14,38 +14,22 @@ def init_db():
 
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS profile (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pending (
-                action TEXT,
-                params TEXT,
-                expires REAL
-            )
-        ''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS profile (key TEXT PRIMARY KEY, value TEXT)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS pending (action TEXT, params TEXT, expires REAL)''')
         conn.commit()
 
 def save_fact(key: str, value: str):
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO profile (key, value) VALUES (?, ?)
-            ON CONFLICT(key) DO UPDATE SET value=excluded.value
-        ''', (key, value))
+        cursor.execute('''INSERT INTO profile (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value''', (key, value))
         conn.commit()
 
 def get_all_facts() -> dict:
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT key, value FROM profile')
-        rows = cursor.fetchall()
-        return {row[0]: row[1] for row in rows}
+        return {row[0]: row[1] for row in cursor.fetchall()}
 
-# ✅ НОВАЯ ФУНКЦИЯ ДЛЯ СБРОСА ПАМЯТИ
 def clear_all_facts():
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
@@ -57,8 +41,7 @@ def save_pending(action: str, params: str):
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('DELETE FROM pending')
-        cursor.execute('INSERT INTO pending (action, params, expires) VALUES (?, ?, ?)', 
-                       (action, params, time.time() + 600))
+        cursor.execute('INSERT INTO pending (action, params, expires) VALUES (?, ?, ?)', (action, params, time.time() + 600))
         conn.commit()
 
 def get_pending():

@@ -5,39 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#005BBB">
     <title>БАШГИД | Твой гид по Башкирии</title>
-    
     <link rel="manifest" href="/manifest.json?v={{ asset_version }}">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #f4f6f8; color: #333; width: 100vw; max-width: 100vw; overflow-x: hidden; height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-        
-        .header {
-            background: linear-gradient(to bottom, #005BBB 0%, #005BBB 33%, #FFFFFF 33%, #FFFFFF 66%, #00843D 66%, #00843D 100%);
-            border-bottom: 4px solid #FFD700; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; min-height: 75px;
-        }
-
+        .header { background: linear-gradient(to bottom, #005BBB 0%, #005BBB 33%, #FFFFFF 33%, #FFFFFF 66%, #00843D 66%, #00843D 100%); border-bottom: 4px solid #FFD700; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; min-height: 75px; }
         .header-emblem { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 60px; width: auto; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6)); z-index: 1; }
-
-        .logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8), 0 0 5px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; z-index: 2; }
-        .header-info { display: flex; align-items: center; gap: 15px; font-size: 0.95rem; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8), 0 0 5px rgba(0,0,0,0.5); z-index: 2; }
-        
-        .map-toggle-btn { background: #FFD700; color: #005BBB; border: none; border-radius: 20px; padding: 5px 12px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .map-toggle-btn:hover { background: #ffea70; transform: scale(1.05); }
-
+        .logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 10px; z-index: 2; }
+        .header-info { display: flex; align-items: center; gap: 15px; font-size: 0.95rem; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); z-index: 2; }
+        .map-toggle-btn { background: #FFD700; color: #005BBB; border: none; border-radius: 20px; padding: 5px 12px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .ticker-wrap { width: 100%; overflow: hidden; background: #fff; border-bottom: 1px solid #e1e8ed; padding: 4px 0; flex-shrink: 0; }
         .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 25s linear infinite; color: #005BBB; font-weight: bold; font-size: 0.95rem; letter-spacing: 1px; }
         @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
-
+        
         .app-layout { display: flex; flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; overflow: hidden; position: relative; }
-        .sidebar { width: 220px; padding: 15px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
-        .promo-card { background: #fff; border-radius: 12px; padding: 10px; cursor: pointer; border: 1px solid #e1e8ed; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; }
-        .promo-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(22,107,67,0.15); border-color: #166b43; }
-        .promo-img { width: 100%; height: 80px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: #e1e8ed; color: #166b43; }
-        .promo-title { font-size: 0.85rem; font-weight: bold; color: #166b43; }
+        
+        .sidebar { width: 220px; padding: 15px 10px; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 0; }
+        
+        .showcase-card { background: #fff; border-radius: 15px; overflow: hidden; cursor: pointer; border: 1px solid #e1e8ed; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; display: flex; flex-direction: column; flex-shrink: 0; }
+        .showcase-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(22,107,67,0.2); border-color: #166b43; }
+        .showcase-img { width: 100%; height: 150px; object-fit: cover; background: #e1e8ed; display: block; }
+        .showcase-title { font-size: 1rem; font-weight: bold; color: #166b43; padding: 12px 10px; }
 
         .center-panel { flex: 1; display: flex; flex-direction: column; position: relative; background-color: #f4f6f8; min-width: 0; }
         #chat-container { flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
@@ -45,21 +36,52 @@
         .message { padding: 12px 16px; border-radius: 16px; max-width: 85%; line-height: 1.5; font-size: 0.95rem; animation: fadeIn 0.3s ease-out; word-wrap: break-word; }
         .message.bot { background-color: #fff; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: pre-wrap; }
         .message.user { background-color: #166b43; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 1px 3px rgba(22,107,67,0.2); }
-        .chat-img { width: 100%; border-radius: 12px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chat-img { width: 100%; border-radius: 12px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: block; }
+
+        .place-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; border: 1px solid #e1e8ed; margin-bottom: 10px; }
+        .place-img { width: 100%; height: 160px; object-fit: cover; background: #e1e8ed; display: block; }
+        .place-content { padding: 15px; }
+        .place-title { font-size: 1.2rem; font-weight: bold; color: #166b43; margin-bottom: 5px; }
+        .place-desc { font-size: 0.9rem; color: #555; white-space: pre-wrap; margin-bottom: 15px; line-height: 1.4; }
+        .place-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .place-btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 80px; }
+        .btn-green { background: #166b43; color: white; }
+        .btn-outline { background: #f0f2f5; color: #333; border: 1px solid #e1e8ed; }
+        
+        .guide-selection { display: flex; gap: 15px; margin-top: 10px; justify-content: center; }
+        .guide-card { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; width: 140px; }
+        .guide-card:hover { transform: translateY(-5px); }
+        .guide-img { width: 140px; height: 180px; object-fit: cover; border-radius: 15px; border: 3px solid #e1e8ed; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .guide-card:hover .guide-img { border-color: #166b43; }
+        .guide-name { margin-top: 8px; font-weight: bold; color: #166b43; font-size: 0.9rem; }
 
         .bottom-panel { flex-shrink: 0; padding: 10px 15px 15px; width: 100%; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
-        .input-area { display: flex; background: #fff; padding: 5px 5px 5px 15px; border-radius: 24px; align-items: flex-end; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e1e8ed; }
+        
+        .main-actions { display: flex; gap: 8px; padding: 8px 15px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(to right, #005BBB 0%, #FFFFFF 50%, #00843D 100%); }
+        .main-actions::-webkit-scrollbar { display: none; }
+        .main-action-btn { background: rgba(255, 255, 255, 0.95); color: #005BBB; border: 1px solid #e1e8ed; padding: 8px 14px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-size: 0.85rem; transition: 0.2s; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .main-action-btn:hover { background: #005BBB; color: white; border-color: #005BBB; }
+
+        .input-area { display: flex; background: #fff; padding: 5px 5px 5px 10px; border-radius: 24px; align-items: flex-end; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e1e8ed; }
+        
+        #guide-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; border: 2px solid #166b43; margin-right: 8px; margin-bottom: 2px; flex-shrink: 0; opacity: 0.4; transition: opacity 0.3s, transform 0.3s, box-shadow 0.3s; background: #e1e8ed; }
+        #guide-avatar.speaking { opacity: 1; animation: avatarPulse 1.5s infinite ease-in-out; }
+        #guide-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        @keyframes avatarPulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 107, 67, 0.7); } 50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(22, 107, 67, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(22, 107, 67, 0); } }
+
         textarea { flex: 1; background: transparent; border: none; color: #333; font-size: 1rem; outline: none; resize: none; max-height: 120px; padding: 10px 0; font-family: inherit; line-height: 1.4; }
         .btn-circle { border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: 5px; flex-shrink: 0; margin-bottom: 2px; transition: 0.2s; }
-        
         #sendBtn { background: #166b43; color: white; font-size: 1.2rem; }
-        #sendBtn:hover { background: #125537; }
         #micBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
         #micBtn.listening { background: #ffebee; color: #d32f2f; animation: pulse 1s infinite; }
         #voiceToggleBtn { background: #f0f2f5; color: #333; font-size: 1.1rem; }
         #voiceToggleBtn.muted { color: #d32f2f; }
         #attachBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
         #geoBtn { background: #166b43; color: white; font-size: 1.2rem; display: none; }
+        
+        #guideModeBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
+        #guideModeBtn.active { background: #00843D; color: white; animation: pulseGreen 2s infinite; }
+        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(0, 132, 61, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 132, 61, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 132, 61, 0); } }
 
         #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f8; z-index: 100; display: none; flex-direction: column; }
         #map { flex: 1; width: 100%; }
@@ -68,468 +90,562 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 107, 67, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 107, 67, 0); } }
+        
+        .action-card { display: flex; flex-direction: column; background: #112240; border-radius: 15px; margin-top: 10px; overflow: hidden; width: 100%; border: 1px solid #166b43; }
+        .action-card-header { padding: 12px; background: #f8f9fa; border-bottom: 1px solid #e1e8ed; display: flex; gap: 10px; align-items: center; }
+        .action-card-title { font-size: 1.1rem; font-weight: bold; color: #333; margin: 0; }
+        .action-card-text { font-size: 0.85rem; color: #666; margin-top: 3px; }
+        .action-card-btn { display: block; text-align: center; background: #166b43; color: white; text-decoration: none; padding: 10px; font-weight: bold; font-size: 1rem; }
 
         @media (max-width: 900px) {
             .sidebar { display: none; }
-            .mobile-promo { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; scrollbar-width: none; background: #f4f6f8; }
+            .mobile-promo { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; background: #f4f6f8; scrollbar-width: none; }
             .mobile-promo::-webkit-scrollbar { display: none; }
-            .mobile-promo .promo-card { min-width: 130px; flex-shrink: 0; padding: 8px; }
-            .mobile-promo .promo-img { height: 60px; font-size: 1.5rem; }
+            .mobile-promo .showcase-card { min-width: 200px; flex-shrink: 0; }
+            .mobile-promo .showcase-img { height: 100px; }
             .header { padding: 5px 10px; min-height: 60px; }
-            .logo { font-size: 1.1rem; gap: 5px; }
-            .logo svg { width: 20px; height: 20px; }
+            .logo { font-size: 1.1rem; }
             .header-emblem { height: 40px; }
             .header-info { gap: 8px; font-size: 0.8rem; }
-            .map-toggle-btn { padding: 4px 8px; font-size: 0.75rem; }
-            #clock { display: none; } 
+            #clock { display: none; }
+            #guide-avatar { width: 32px; height: 32px; }
         }
         @media (min-width: 901px) { .mobile-promo { display: none; } }
     </style>
 </head>
 <body>
     <button onclick="resetBot()" style="position: absolute; top: 15px; right: 50px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
-
     <header class="header">
         <div class="logo">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 8 8 9.2 9 10.2V16C9 18 7.5 19.5 5.5 19.5H4V22H5.5C8 22 10 20.5 11 18.5C11.5 19.5 12 20 13 21H14.5C15.5 20 16 19.5 16.5 18.5C17.5 20.5 19.5 22 22 22H23.5V19.5H22C20 19.5 18.5 18 18.5 16V10.2C19.5 9.2 20 8 20 6.5C20 4 18 2 15.5 2H12ZM12 4H15.5C16.8 4 18 5.2 18 6.5C18 7.8 16.8 9 15.5 9H12V4ZM10.5 9H12V11.5H10.5C10.5 10.5 10.5 9.5 10.5 9Z"/>
-            </svg>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 8 8 9.2 9 10.2V16C9 18 7.5 19.5 5.5 19.5H4V22H5.5C8 22 10 20.5 11 18.5C11.5 19.5 12 20 13 21H14.5C15.5 20 16 19.5 16.5 18.5C17.5 20.5 19.5 22 22 22H23.5V19.5H22C20 19.5 18.5 18 18.5 16V10.2C19.5 9.2 20 8 20 6.5C20 4 18 2 15.5 2H12ZM12 4H15.5C16.8 4 18 5.2 18 6.5C18 7.8 16.8 9 15.5 9H12V4ZM10.5 9H12V11.5H10.5C10.5 10.5 10.5 9.5 10.5 9Z"/></svg>
             БАШГИД
         </div>
-
-        <div class="header-emblem">
-            <img src="/static/gerb.png" alt="Герб Башкортостана" style="height: 100%; width: auto;">
-        </div>
-
+        <div class="header-emblem"><img src="/static/gerb.png" alt="Герб Башкортостана" style="height: 100%; width: auto;"></div>
         <div class="header-info">
             <button class="map-toggle-btn" onclick="toggleMap()">🗺️ Карта</button>
-            <div id="weather">⏳</div>
-            <div id="clock">--:--</div>
+            <div id="weather">⏳</div><div id="clock">--:--</div>
         </div>
     </header>
-
-    <div class="ticker-wrap">
-        <div class="ticker">Рәхим итегез! Добро пожаловать в Башкирию!</div>
-    </div>
-
+    <div class="ticker-wrap"><div class="ticker">Рәхим итегез! Добро пожаловать в Башкирию!</div></div>
+    
     <div class="app-layout">
-        <div class="sidebar" id="sidebar-left"></div>
+        <div class="sidebar" id="sidebar-left">
+            <div class="showcase-card" onclick="quickAction('[showcase:salavat_flowers]')">
+                <img src="/static/img/showcase_salavat_flowers.jpg" class="showcase-img" alt="Салават Юлаев">
+                <div class="showcase-title">🐎 Салават Юлаев</div>
+            </div>
+            <div class="showcase-card" onclick="quickAction('[showcase:friendship]')">
+                <img src="/static/img/showcase_friendship.jpg" class="showcase-img" alt="Монумент Дружбы">
+                <div class="showcase-title">🏛 Монумент Дружбы</div>
+            </div>
+        </div>
 
         <div class="center-panel">
-            <div class="mobile-promo" id="mobile-promo"></div>
+            <div class="mobile-promo" id="mobile-promo">
+                 <div class="showcase-card" onclick="quickAction('[showcase:salavat_flowers]')">
+                    <img src="/static/img/showcase_salavat_flowers.jpg" class="showcase-img" alt="Салават Юлаев">
+                    <div class="showcase-title">🐎 Салават Юлаев</div>
+                </div>
+                <div class="showcase-card" onclick="quickAction('[showcase:friendship]')">
+                    <img src="/static/img/showcase_friendship.jpg" class="showcase-img" alt="Монумент Дружбы">
+                    <div class="showcase-title">🏛 Монумент Дружбы</div>
+                </div>
+                <div class="showcase-card" onclick="quickAction('[showcase:castle]')">
+                    <img src="/static/img/showcase_castle.jpg" class="showcase-img" alt="Замок">
+                    <div class="showcase-title">🏰 Белый Замок</div>
+                </div>
+                <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
+                    <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават крупным планом">
+                    <div class="showcase-title">🐎 Салават</div>
+                </div>
+            </div>
             <div id="chat-container"></div>
-
             <div class="bottom-panel">
+                <div class="main-actions">
+                    <button class="main-action-btn" onclick="quickAction('[attr_history]')">🏛 Что посмотреть</button>
+                    <button class="main-action-btn" onclick="quickAction('[food_start]')">🍽 Где поесть</button>
+                    <button class="main-action-btn" onclick="quickAction('[housing_start]')">🏨 Где жить</button>
+                    <button class="main-action-btn" onclick="quickAction('[call_taxi_start]')">🚕 Такси</button>
+                    <button class="main-action-btn" onclick="quickAction('[route_interests_start]')">📅 Маршрут по интересам</button>
+                </div>
+
                 <div class="input-area">
+                    <div id="guide-avatar"><img id="avatar-img" src="/static/img/guide_female.jpg" alt="Гид"></div>
                     <textarea id="userInput" placeholder="Напиши или скажи..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
                     <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload(event)">
                     <button class="btn-circle" id="geoBtn" onclick="getLocation()">🧭</button>
                     <button class="btn-circle" id="attachBtn" onclick="document.getElementById('fileInput').click()">📎</button>
                     <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
+                    <button class="btn-circle" id="guideModeBtn" onclick="toggleGuideMode()" title="Режим гида (Beta): непрерывный диалог голосом">🎧</button>
                     <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
                     <button class="btn-circle" id="sendBtn" onclick="sendRequest()">↑</button>
                 </div>
             </div>
         </div>
 
-        <div class="sidebar" id="sidebar-right"></div>
-
-        <div id="map-container">
-            <button class="close-map-btn" onclick="toggleMap()">✖ Закрыть карту</button>
-            <div id="map"></div>
+        <div class="sidebar" id="sidebar-right">
+            <div class="showcase-card" onclick="quickAction('[showcase:castle]')">
+                <img src="/static/img/showcase_castle.jpg" class="showcase-img" alt="Замок">
+                <div class="showcase-title">🏰 Белый Замок</div>
+            </div>
+            <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
+                <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават крупным планом">
+                <div class="showcase-title">🐎 Салават</div>
+            </div>
         </div>
+
+        <div id="map-container"><button class="close-map-btn" onclick="toggleMap()">✖ Закрыть карту</button><div id="map"></div></div>
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js?v={{ asset_version }}').catch(e => console.warn('SW:', e));
-        }
-
-        async function resetBot() {
-            if(confirm("Сбросить память бота? Он забудет ваше имя и город.")) {
-                await fetch('/api/reset', { method: 'POST' });
-                location.reload();
-            }
-        }
-
-        const audioPlayer = new Audio();
-        let isVoiceEnabled = true;
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v={{ asset_version }}');
+        async function resetBot() { if(confirm("Сбросить память?")) { await fetch('/api/reset', { method: 'POST' }); localStorage.removeItem('guide_gender'); location.reload(); } }
+        
+        const audioPlayer = new Audio(); let isVoiceEnabled = true;
         const userInputField = document.getElementById('userInput');
-        let chatHistory = [];
-        let map;
-        let mapInitialized = false;
-        
-        let pendingVoiceText = null; 
-        let hasInteracted = false;
+        let chatHistory = [], map, mapInitialized = false, pendingVoiceText = null, hasInteracted = false;
+        let isProcessing = false;
+        let isGuideMode = false; 
 
-        function playPendingVoice() {
-            if (pendingVoiceText && !hasInteracted) {
-                hasInteracted = true;
-                speak(pendingVoiceText);
-                pendingVoiceText = null;
+        function showAvatar() {
+            const avatar = document.getElementById('guide-avatar');
+            if (avatar) avatar.classList.add('speaking');
+        }
+        function hideAvatar() {
+            const avatar = document.getElementById('guide-avatar');
+            if (avatar) avatar.classList.remove('speaking');
+        }
+        function setGuideAvatar(gender) {
+            const img = document.getElementById('avatar-img');
+            if (img) img.src = gender === 'male' ? '/static/img/guide_male.jpg' : '/static/img/guide_female.jpg';
+        }
+
+        function playPendingVoice() { if (pendingVoiceText && !hasInteracted) { hasInteracted = true; speak(pendingVoiceText); pendingVoiceText = null; } }
+        document.body.addEventListener('click', playPendingVoice); document.body.addEventListener('keydown', playPendingVoice); document.body.addEventListener('touchstart', playPendingVoice);
+
+        function toggleGuideMode() {
+            isGuideMode = !isGuideMode;
+            const btn = document.getElementById('guideModeBtn');
+            if (isGuideMode) {
+                btn.classList.add('active');
+                userInputField.placeholder = "🎧 Режим гида: говорите...";
+                if (recognition && !isListening && !isProcessing) recognition.start();
+            } else {
+                btn.classList.remove('active');
+                userInputField.placeholder = "Напиши или скажи...";
+                if (isListening && recognition) recognition.stop();
             }
         }
-        
-        document.body.addEventListener('click', playPendingVoice);
-        document.body.addEventListener('keydown', playPendingVoice);
-        document.body.addEventListener('touchstart', playPendingVoice);
 
         async function speak(text) {
             if (!isVoiceEnabled) return;
-            if (isListening && recognition) {
-                recognition.stop(); 
-            }
-
+            if (isListening && recognition) recognition.stop(); 
+            
             const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[*#_~`®©]/g, '').replace(/\s+/g, ' ').trim();
             if (!cleanText) return;
-
+            
+            showAvatar();
             try {
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: cleanText })
-                });
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = URL.createObjectURL(blob);
-                    audioPlayer.src = url;
-                    audioPlayer.play();
+                const res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: cleanText }) });
+                if (res.ok) { 
+                    const blob = await res.blob(); 
+                    audioPlayer.src = URL.createObjectURL(blob); 
+                    audioPlayer.onended = () => {
+                        hideAvatar();
+                        if (isGuideMode && !isProcessing && recognition) {
+                            setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
+                        }
+                    };
+                    audioPlayer.play(); 
+                } else {
+                    hideAvatar();
+                    if (isGuideMode && !isProcessing && recognition) {
+                        setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
+                    }
                 }
-            } catch (e) { console.error("Ошибка TTS:", e); }
+            } catch (e) { 
+                console.error("TTS Error:", e); 
+                hideAvatar(); 
+                if (isGuideMode && !isProcessing && recognition) {
+                    setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
+                }
+            }
         }
 
-        function toggleVoice() { 
-            isVoiceEnabled = !isVoiceEnabled; 
-            const btn = document.getElementById('voiceToggleBtn'); 
-            if (isVoiceEnabled) { btn.innerText = '🔊'; btn.classList.remove('muted'); } 
-            else { btn.innerText = '🔇'; btn.classList.add('muted'); audioPlayer.pause(); audioPlayer.currentTime = 0; } 
-        }
+        function toggleVoice() { isVoiceEnabled = !isVoiceEnabled; const btn = document.getElementById('voiceToggleBtn'); btn.innerText = isVoiceEnabled ? '🔊' : '🔇'; btn.classList.toggle('muted', !isVoiceEnabled); if(!isVoiceEnabled) { audioPlayer.pause(); audioPlayer.currentTime = 0; hideAvatar(); } }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        let isListening = false;
-        let silenceTimer = null;
-
+        let recognition = null, isListening = false, silenceTimer = null;
         if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onstart = () => {
-                isListening = true;
-                document.getElementById('micBtn').classList.add('listening');
-                userInputField.placeholder = "Слушаю...";
+            recognition = new SpeechRecognition(); recognition.lang = 'ru-RU'; recognition.continuous = true; recognition.interimResults = true;
+            
+            recognition.onstart = () => { 
+                isListening = true; 
+                document.getElementById('micBtn').classList.add('listening'); 
+                if (!isGuideMode) userInputField.placeholder = "Слушаю..."; 
             };
-
+            
             recognition.onresult = (event) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                    else interimTranscript += event.results[i][0].transcript;
-                }
-                userInputField.value = (finalTranscript + interimTranscript).trim();
-                userInputField.style.height = 'auto';
-                userInputField.style.height = userInputField.scrollHeight + 'px';
-
+                let final = '', interim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) final += event.results[i][0].transcript; else interim += event.results[i][0].transcript; }
+                userInputField.value = (final + interim).trim();
+                userInputField.style.height = 'auto'; userInputField.style.height = userInputField.scrollHeight + 'px';
+                
                 if (silenceTimer) clearTimeout(silenceTimer);
-                if (userInputField.value.length > 0) {
-                    silenceTimer = setTimeout(() => {
-                        if (isListening) {
-                            recognition.stop();
-                            if (userInputField.value.trim()) sendRequest();
+                const timeout = isGuideMode ? 5000 : 4000; 
+                
+                if (userInputField.value.length > 0) silenceTimer = setTimeout(() => { 
+                    if (isListening) { 
+                        recognition.stop(); 
+                        if (userInputField.value.trim()) sendRequest(); 
+                    } 
+                }, timeout); 
+            };
+            
+            recognition.onend = () => { 
+                isListening = false; 
+                document.getElementById('micBtn').classList.remove('listening'); 
+                if (isGuideMode && !isProcessing) {
+                    userInputField.placeholder = "🎧 Режим гида: ожидание...";
+                    setTimeout(() => {
+                        if (isGuideMode && !isListening && !isProcessing) {
+                            try { recognition.start(); } catch(e) {}
                         }
-                    }, 4000); 
+                    }, 1000);
+                } else if (!isGuideMode) {
+                    userInputField.placeholder = "Напиши или скажи..."; 
                 }
             };
-
-            recognition.onend = () => {
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-                userInputField.placeholder = "Напиши или скажи...";
+            
+            recognition.onerror = (event) => { 
+                if (event.error === 'not-allowed') alert("Доступ к микрофону запрещен."); 
+                isListening = false; 
+                document.getElementById('micBtn').classList.remove('listening'); 
             };
-
-            recognition.onerror = (event) => {
-                if (event.error === 'not-allowed') alert("Доступ к микрофону запрещен.");
-                isListening = false;
-                document.getElementById('micBtn').classList.remove('listening');
-            };
-        } else {
-            document.getElementById('micBtn').style.display = 'none';
         }
 
         function toggleMic() {
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            if (isListening) {
-                recognition.stop();
-                if (silenceTimer) clearTimeout(silenceTimer);
-                if (userInputField.value.trim()) sendRequest();
-            } else {
-                userInputField.value = "";
-                recognition.start();
-            }
+            if (isListening) { recognition.stop(); if (silenceTimer) clearTimeout(silenceTimer); if (userInputField.value.trim()) sendRequest(); } 
+            else { userInputField.value = ""; recognition.start(); }
         }
 
-        function handleKeyPress(e) { 
-            if (e.key === 'Enter' && !e.shiftKey) { 
-                e.preventDefault(); 
-                if (isListening) recognition.stop();
-                sendRequest(); 
-            } 
-        }
+        function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (isListening && recognition) recognition.stop(); sendRequest(); } }
+        userInputField.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
         
-        userInputField.addEventListener('input', function() { 
-            this.style.height = 'auto'; 
-            this.style.height = this.scrollHeight + 'px'; 
-        });
-
         function quickAction(text) { 
+            if (isProcessing) return;
             userInputField.value = text; 
             sendRequest(); 
         }
 
         async function sendRequest() {
-            const text = userInputField.value.trim();
-            if(!text) return;
-            if (isListening) recognition.stop();
-
-            addMessage(text, 'user'); 
-            chatHistory.push({ role: "user", text: text });
-            userInputField.value = ''; userInputField.style.height = 'auto'; 
+            const text = userInputField.value.trim(); if(!text) return;
+            if (isProcessing) return;
+            isProcessing = true;
             
-            const loadingId = addMessage("...", 'bot');
+            if (isListening && recognition) recognition.stop();
+            
+            if (text === '[select_guide:female]') { localStorage.setItem('guide_gender', 'female'); setGuideAvatar('female'); }
+            if (text === '[select_guide:male]') { localStorage.setItem('guide_gender', 'male'); setGuideAvatar('male'); }
 
+            if (!text.startsWith("[showcase:") && !text.startsWith("[delivery_") && !text.startsWith("[cat_") && !text.startsWith("[food_start]") && !text.startsWith("[attr_") && !text.startsWith("[route:") && !text.startsWith("[transport:") && !text.startsWith("[select_guide:") && !text.startsWith("[details_") && !text.startsWith("[housing_") && !text.startsWith("[call_phone:") && !text.startsWith("[ri_") && !text.startsWith("[route_interests_start]") && !text.startsWith("[map:")) {
+                addMessage(text, 'user'); 
+                chatHistory.push({ role: "user", text: text });
+            }
+            userInputField.value = ''; userInputField.style.height = 'auto'; 
+            const loadingId = addMessage("...", 'bot');
+            
             try {
-                const response = await fetch('/api/ask', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ text: text, history: chatHistory }) 
-                });
+                const response = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, history: chatHistory }) });
                 const data = await response.json();
                 
-                document.getElementById(loadingId).remove(); 
-                const msgId = addMessage(data.answer, 'bot'); 
-                chatHistory.push({ role: "bot", text: data.answer });
-                speak(data.answer);
+                const loadEl = document.getElementById(loadingId);
+                if (loadEl) loadEl.remove(); 
                 
-                if (data.image) {
-                    const msgDiv = document.getElementById(msgId);
-                    const img = document.createElement('img');
-                    img.src = data.image;
-                    img.className = "chat-img";
-                    msgDiv.appendChild(img);
+                if (data.action === "open_url") {
+                    window.location.href = data.url;
+                    addMessage(data.answer, 'bot');
                 }
-                
-                if (data.buttons && data.buttons.length > 0) {
+                else if (data.action === "select_guide") {
+                    const msgId = addMessage(data.answer, 'bot');
                     const msgDiv = document.getElementById(msgId);
-                    const btnContainer = document.createElement('div');
-                    btnContainer.style.marginTop = '10px';
-                    btnContainer.style.display = 'flex';
-                    btnContainer.style.gap = '8px';
                     
-                    data.buttons.forEach(btn => {
-                        const button = document.createElement('button');
-                        button.className = 'quick-btn';
-                        button.style.margin = '0';
-                        button.textContent = btn.label;
-                        button.onclick = () => quickAction(btn.action);
-                        btnContainer.appendChild(button);
-                    });
-                    msgDiv.appendChild(btnContainer);
-                }
-                
-                if (data.action === "show_card") {
-                    const msgDiv = document.getElementById(msgId);
-                    const card = data.card;
-                    let icon = card.type === "taxi" ? "🚕" : "📌";
-                    const cardDiv = document.createElement('div');
-                    cardDiv.className = "action-card";
-                    cardDiv.innerHTML = `<div class="action-card-header" style="padding:12px; background:#f8f9fa; border-bottom:1px solid #e1e8ed; display:flex; gap:10px; align-items:center;"><span style="font-size:1.5rem;">${icon}</span><div><div style="font-weight:bold; color:#333;">${card.title}</div><div style="font-size:0.85rem; color:#666;">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn" style="display:block; text-align:center; background:#166b43; color:white; text-decoration:none; padding:10px; font-weight:bold;">${card.button}</a>`;
-                    msgDiv.appendChild(cardDiv);
-                }
-                
-                if (data.answer.includes("компас") || data.answer.includes("координат")) {
-                    document.getElementById('geoBtn').style.display = 'flex';
-                }
+                    const selectDiv = document.createElement('div');
+                    selectDiv.className = "guide-selection";
+                    
+                    const girlCard = document.createElement('div');
+                    girlCard.className = "guide-card";
+                    girlCard.onclick = () => quickAction('[select_guide:female]');
+                    girlCard.innerHTML = `<img src="/static/img/guide_female.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Айгуль'"><div class="guide-name">Айгуль</div>`;
+                    
+                    const manCard = document.createElement('div');
+                    manCard.className = "guide-card";
+                    manCard.onclick = () => quickAction('[select_guide:male]');
+                    manCard.innerHTML = `<img src="/static/img/guide_male.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Ильдар'"><div class="guide-name">Ильдар</div>`;
 
+                    selectDiv.appendChild(girlCard);
+                    selectDiv.appendChild(manCard);
+                    msgDiv.appendChild(selectDiv);
+                }
+                else if (data.action === "show_cards" && data.cards) {
+                    addMessage(data.answer, 'bot'); 
+                    
+                    let firstCardDiv = null;
+
+                    data.cards.forEach((card, index) => {
+                        const cardMsgId = addMessage('', 'bot');
+                        const msgDiv = document.getElementById(cardMsgId);
+                        msgDiv.style.padding = '0'; msgDiv.style.background = 'transparent'; msgDiv.style.boxShadow = 'none'; msgDiv.style.border = 'none'; msgDiv.style.maxWidth = '85%';
+                        
+                        const cardDiv = document.createElement('div');
+                        cardDiv.className = "place-card";
+                        
+                        const img = document.createElement('img');
+                        img.src = card.image || 'https://placehold.co/600x400/eeeeee/333333?text=Фото';
+                        img.className = "place-img";
+                        img.onerror = function() { this.src = 'https://placehold.co/600x400/eeeeee/333333?text=Фото'; };
+
+                        const content = document.createElement('div');
+                        content.className = "place-content";
+                        content.innerHTML = `<div class="place-title">${card.title}</div><div class="place-desc">${card.desc}</div><div class="place-actions" id="actions-${cardMsgId}"></div>`;
+
+                        const actions = content.querySelector('.place-actions');
+                        if (card.buttons) {
+                            card.buttons.forEach(btn => {
+                                if (btn.type === "url") {
+                                    const a = document.createElement('a');
+                                    a.className = "place-btn btn-green";
+                                    a.href = btn.action;
+                                    a.target = "_blank";
+                                    a.textContent = btn.label;
+                                    actions.appendChild(a);
+                                } else {
+                                    const b = document.createElement('button');
+                                    b.className = "place-btn btn-green";
+                                    b.textContent = btn.label;
+                                    b.onclick = () => quickAction(btn.action);
+                                    actions.appendChild(b);
+                                }
+                            });
+                        }
+
+                        cardDiv.appendChild(img);
+                        cardDiv.appendChild(content);
+                        msgDiv.appendChild(cardDiv);
+
+                        if (index === 0) firstCardDiv = msgDiv;
+                    });
+
+                    if (firstCardDiv) {
+                        setTimeout(() => {
+                            firstCardDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                    }
+
+                    if (data.buttons && data.buttons.length > 0) {
+                        const navContainer = document.createElement('div');
+                        navContainer.style.marginTop = '10px';
+                        navContainer.style.display = 'flex';
+                        navContainer.style.flexWrap = 'wrap';
+                        navContainer.style.gap = '8px';
+                        
+                        data.buttons.forEach(btn => {
+                            const button = document.createElement('button');
+                            button.className = 'quick-btn';
+                            button.style.margin = '0'; button.style.padding = '8px 12px'; button.style.borderRadius = '15px'; button.style.border = 'none'; button.style.background = '#e1e8ed'; button.style.cursor = 'pointer'; button.style.fontSize = '0.9rem';
+                            button.textContent = btn.label;
+                            button.onclick = () => quickAction(btn.action);
+                            navContainer.appendChild(button);
+                        });
+                        const chatContainer = document.getElementById('chat-container');
+                        chatContainer.appendChild(navContainer);
+                    }
+
+                } else if (data.action === "speak_only") {
+                    speak(data.answer);
+                } else {
+                    const msgId = addMessage(data.answer, 'bot'); 
+                    chatHistory.push({ role: "bot", text: data.answer });
+                    speak(data.answer);
+                    if (data.image) {
+                        const msgDiv = document.getElementById(msgId);
+                        const img = document.createElement('img'); 
+                        img.src = data.image; 
+                        img.className = "chat-img"; 
+                        img.onerror = function() { this.style.display = 'none'; }; 
+                        msgDiv.appendChild(img);
+                    }
+                    if (data.buttons && data.buttons.length > 0) {
+                        const msgDiv = document.getElementById(msgId); const btnContainer = document.createElement('div');
+                        btnContainer.style.marginTop = '10px'; btnContainer.style.display = 'flex'; btnContainer.style.flexWrap = 'wrap'; btnContainer.style.gap = '8px';
+                        data.buttons.forEach(btn => {
+                            const button = document.createElement('button'); 
+                            button.className = 'quick-btn'; 
+                            button.style.margin = '0'; button.style.padding = '8px 12px'; button.style.borderRadius = '15px'; button.style.border = 'none'; button.style.background = '#e1e8ed'; button.style.cursor = 'pointer'; button.style.fontSize = '0.9rem';
+                            button.textContent = btn.label; 
+                            button.onclick = () => quickAction(btn.action); 
+                            btnContainer.appendChild(button);
+                        });
+                        msgDiv.appendChild(btnContainer);
+                    }
+                    if (data.action === "show_card") {
+                        const msgDiv = document.getElementById(msgId); const card = data.card;
+                        const cardDiv = document.createElement('div'); cardDiv.className = "action-card";
+                        let icon = card.type === "taxi" ? "🚕" : (card.type === "map" ? "🗺️" : (card.type === "food" ? "🍕" : "📌"));
+                        cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
+                        msgDiv.appendChild(cardDiv);
+                    }
+                    if (data.answer.includes("компас") || data.answer.includes("координат")) document.getElementById('geoBtn').style.display = 'flex';
+                }
             } catch (e) { 
-                document.getElementById(loadingId).remove(); 
+                console.error(e);
+                const loadEl = document.getElementById(loadingId);
+                if (loadEl) loadEl.remove();
                 addMessage('Ошибка связи.', 'bot'); 
+            } finally {
+                isProcessing = false;
+                if (isGuideMode && !isListening && recognition) {
+                     setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 1000);
+                }
             }
         }
 
         function addMessage(text, sender) {
-            const container = document.getElementById('chat-container');
-            const msgDiv = document.createElement('div');
+            const container = document.getElementById('chat-container'); const msgDiv = document.createElement('div');
             msgDiv.className = `message ${sender}`; msgDiv.textContent = text;
             const id = 'msg-' + Date.now() + Math.floor(Math.random() * 100); msgDiv.id = id;
             container.appendChild(msgDiv); container.scrollTop = container.scrollHeight; return id;
         }
 
-        const PROMO_DATA = [
-            { id: "promo_term", title: "Термы Стерлитамак", emoji: "🏞" },
-            { id: "promo_mayakovsky", title: "Кафе Маяковский", emoji: "☕" },
-            { id: "promo_azimut", title: "Отель Азимут", emoji: "🏨" },
-            { id: "promo_gostiny", title: "Гостиный Двор", emoji: "🏛" },
-            { id: "promo_aksakov", title: "Музей Аксакова", emoji: "🎭" },
-            { id: "promo_pavlovka", title: "База Павловка", emoji: "🌲" }
-        ];
-
-        function renderPromos() {
-            const l = document.getElementById('sidebar-left');
-            const r = document.getElementById('sidebar-right');
-            const m = document.getElementById('mobile-promo');
-            
-            PROMO_DATA.forEach((p, i) => {
-                const html = `<div class="promo-card" onclick="quickAction('[promo:${p.id}]')"><div class="promo-img">${p.emoji}</div><div class="promo-title">${p.title}</div></div>`;
-                if (i < 3) l.innerHTML += html;
-                else r.innerHTML += html;
-                m.innerHTML += html;
-            });
-        }
-        renderPromos();
-
-        function toggleMap() {
-            const mapContainer = document.getElementById('map-container');
-            if (mapContainer.style.display === 'flex') {
-                mapContainer.style.display = 'none';
-            } else {
-                mapContainer.style.display = 'flex';
-                if (!mapInitialized) initMap();
-                setTimeout(() => { if(map) map.invalidateSize(); }, 200);
-            }
+        function toggleMap() { 
+            const c = document.getElementById('map-container'); 
+            if (c.style.display === 'flex') {
+                c.style.display = 'none'; 
+            } else { 
+                c.style.display = 'flex'; 
+                if (!mapInitialized) {
+                    initMap(); 
+                } else {
+                    setTimeout(() => { if(map) map.invalidateSize(); }, 200);
+                }
+            } 
         }
 
         async function initMap() {
-            map = L.map('map').setView([54.7388, 55.9721], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-
+            map = L.map('map').setView([54.7275, 55.9480], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
             try {
-                const res = await fetch('/api/map_points');
-                const data = await res.json();
-                
+                const data = await (await fetch('/api/map_points')).json();
                 data.points.forEach(p => {
-                    const icon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div style="font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${p.emoji}</div>`,
-                        iconSize: [30, 30],
-                        iconAnchor: [15, 30]
-                    });
-
-                    const marker = L.marker([p.lat, p.lon], {icon: icon}).addTo(map);
-                    
-                    const popupContent = `
-                        <div style="text-align: center; min-width: 120px;">
-                            <b style="font-size: 14px; color: #166b43;">${p.name}</b><br>
-                            <button class="map-popup-btn" onclick="mapAction('${p.name}')">Хочу сюда 🚕</button>
-                        </div>
-                    `;
-                    marker.bindPopup(popupContent);
+                    let iconHtml = p.emoji;
+                    if (p.type === 'food') iconHtml = '🍽️';
+                    if (p.type === 'hotel') iconHtml = '🏨';
+                    if (p.type === 'attraction') iconHtml = '🏛️';
+                    const icon = L.divIcon({ className: 'custom-div-icon', html: `<div style="font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${iconHtml}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] });
+                    L.marker([p.lat, p.lon], {icon: icon}).addTo(map).bindPopup(`<b style="color: #166b43; font-size: 14px;">${p.name}</b><br><button class="map-popup-btn" onclick="mapAction('${p.name}')">Хочу сюда 🚕</button>`);
                 });
                 mapInitialized = true;
             } catch (e) { console.error(e); }
         }
+        
+        function mapAction(placeName) { toggleMap(); quickAction(`[map:${placeName}]`); }
 
-        function mapAction(placeName) {
-            toggleMap();
-            quickAction(`[map:${placeName}]`);
-        }
-
-        function updateClock() {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        }
+        function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
         setInterval(updateClock, 1000); updateClock();
 
         async function updateWeather() {
-            try {
-                const res = await fetch('/api/current_weather');
-                const data = await res.json();
-                let icon = '☀️';
-                if (data.desc.includes('дождь')) icon = '🌧';
-                if (data.desc.includes('снег')) icon = '❄️';
-                if (data.desc.includes('облач')) icon = '☁️';
-                document.getElementById('weather').innerText = `${icon} ${data.temp}`;
-            } catch(e) { document.getElementById('weather').innerText = '🌡 --°'; }
+            try { const data = await (await fetch('/api/current_weather')).json(); let icon = '☀️'; if (data.desc.includes('дождь')) icon = '🌧'; if (data.desc.includes('снег')) icon = '❄️'; if (data.desc.includes('облач')) icon = '☁️'; document.getElementById('weather').innerText = `${icon} ${data.temp}`; } catch(e) { document.getElementById('weather').innerText = '🌡 --°'; }
         }
         updateWeather();
 
         async function initApp() {
+            const gender = localStorage.getItem('guide_gender') || 'female';
+            setGuideAvatar(gender);
+
             try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                if (data.is_new) {
-                    addMessage(data.greeting, 'bot');
-                    pendingVoiceText = data.greeting; 
-                } else {
-                    const loadingId = addMessage("БашГид просыпается...", 'bot');
-                    const briefRes = await fetch('/api/briefing');
-                    const briefData = await briefRes.json();
-                    document.getElementById(loadingId).remove(); 
-                    if (briefData.answer) {
-                        addMessage(briefData.answer, 'bot');
-                        speak(briefData.answer); 
+                const data = await (await fetch('/api/status')).json();
+                if (data.is_new) { 
+                    const msgId = addMessage(data.greeting, 'bot'); 
+                    pendingVoiceText = data.greeting;
+                    
+                    if (data.action === "select_guide") {
+                        const msgDiv = document.getElementById(msgId);
+                        const selectDiv = document.createElement('div');
+                        selectDiv.className = "guide-selection";
+                        
+                        const girlCard = document.createElement('div');
+                        girlCard.className = "guide-card";
+                        girlCard.onclick = () => quickAction('[select_guide:female]');
+                        girlCard.innerHTML = `<img src="/static/img/guide_female.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Айгуль'"><div class="guide-name">Айгуль</div>`;
+                        
+                        const manCard = document.createElement('div');
+                        manCard.className = "guide-card";
+                        manCard.onclick = () => quickAction('[select_guide:male]');
+                        manCard.innerHTML = `<img src="/static/img/guide_male.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Ильдар'"><div class="guide-name">Ильдар</div>`;
+
+                        selectDiv.appendChild(girlCard);
+                        selectDiv.appendChild(manCard);
+                        msgDiv.appendChild(selectDiv);
                     }
+                } 
+                else {
+                    const loadingId = addMessage("БашГид просыпается...", 'bot');
+                    const brief = await (await fetch('/api/briefing')).json();
+                    const loadEl = document.getElementById(loadingId);
+                    if (loadEl) loadEl.remove(); 
+                    if (brief.answer) { addMessage(brief.answer, 'bot'); speak(brief.answer); }
                 }
-            } catch (e) { addMessage("Ошибка загрузки, но я готов помочь.", 'bot'); }
+            } catch (e) { addMessage("Ошибка загрузки, но я готова помочь.", 'bot'); }
         }
         window.addEventListener('DOMContentLoaded', () => { setTimeout(initApp, 300); });
 
         function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const file = event.target.files[0]; if (!file) return;
             addMessage(`[Прикреплен файл: ${file.name}]`, 'user');
             const loadingId = addMessage("БашГид изучает файл...", 'bot loading');
-            const formData = new FormData();
-            formData.append("file", file);
-            fetch('/api/upload', { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById(loadingId).remove();
-                    addMessage(data.answer, 'bot');
-                    speak(data.answer);
-                })
-                .catch(() => {
-                    document.getElementById(loadingId).remove();
-                    addMessage('Ошибка при загрузке файла.', 'bot');
-                });
+            const formData = new FormData(); formData.append("file", file);
+            fetch('/api/upload', { method: 'POST', body: formData }).then(res => res.json()).then(data => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage(data.answer, 'bot'); speak(data.answer); }).catch(() => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage('Ошибка при загрузке.', 'bot'); });
             event.target.value = '';
         }
 
         async function getLocation() {
             if (navigator.geolocation) {
-                const geoBtn = document.getElementById('geoBtn');
-                geoBtn.style.display = 'none'; // Скрываем сразу
+                const geoBtn = document.getElementById('geoBtn'); geoBtn.style.display = 'none';
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     try {
-                        const res = await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) });
-                        const data = await res.json();
-                        
-                        // Показываем ответ только если он есть
+                        const data = await (await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) })).json();
                         if (data.answer) {
-                            const msgId = addMessage(data.answer, 'bot');
-                            speak(data.answer);
+                            const msgId = addMessage(data.answer, 'bot'); speak(data.answer);
+                            const msgDiv = document.getElementById(msgId);
+
+                            if (data.buttons && data.buttons.length > 0) {
+                                const btnContainer = document.createElement('div');
+                                btnContainer.style.marginTop = '10px'; btnContainer.style.display = 'flex'; btnContainer.style.flexWrap = 'wrap'; btnContainer.style.gap = '8px';
+                                data.buttons.forEach(btn => {
+                                    const button = document.createElement('button'); 
+                                    button.className = 'quick-btn'; 
+                                    button.style.margin = '0'; button.style.padding = '8px 12px'; button.style.borderRadius = '15px'; button.style.border = 'none'; button.style.background = '#e1e8ed'; button.style.cursor = 'pointer'; button.style.fontSize = '0.9rem';
+                                    button.textContent = btn.label; 
+                                    button.onclick = () => quickAction(btn.action); 
+                                    btnContainer.appendChild(button);
+                                });
+                                msgDiv.appendChild(btnContainer);
+                            }
+
                             if (data.action === "show_card" && data.card) {
-                                const msgDiv = document.getElementById(msgId);
                                 const card = data.card;
-                                const cardDiv = document.createElement('div');
-                                cardDiv.className = "action-card";
-                                cardDiv.innerHTML = `<div class="action-card-header" style="padding:12px; background:#f8f9fa; border-bottom:1px solid #e1e8ed; display:flex; gap:10px; align-items:center;"><span style="font-size:1.5rem;">🚕</span><div><div style="font-weight:bold; color:#333;">${card.title}</div><div style="font-size:0.85rem; color:#666;">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn" style="display:block; text-align:center; background:#166b43; color:white; text-decoration:none; padding:10px; font-weight:bold;">${card.button}</a>`;
+                                const cardDiv = document.createElement('div'); cardDiv.className = "action-card";
+                                let icon = card.type === "taxi" ? "🚕" : (card.type === "map" ? "🗺️" : "📌");
+                                cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
                                 msgDiv.appendChild(cardDiv);
                             }
                         } else {
                             const zoneText = data.zone === "ufa_center" ? "Вы в центре Уфы" : "Вы в Уфе";
-                            addMessage(`Геолокация включена! ${zoneText}.`, 'bot');
-                            speak(`Геолокация включена! ${zoneText}.`);
+                            addMessage(`Геолокация включена! ${zoneText}.`, 'bot'); speak(`Геолокация включена!`);
                         }
                     } catch (e) { console.error(e); }
-                }, (error) => { 
-                    alert("Вы отклонили геолокацию. Включите GPS в настройках телефона."); 
-                    geoBtn.style.display = 'flex'; // Показываем кнопку обратно
-                });
+                }, (error) => { alert("Вы отклонили геолокацию."); geoBtn.style.display = 'flex'; });
             }
         }
     </script>
