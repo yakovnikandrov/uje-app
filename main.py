@@ -34,7 +34,7 @@ MAP_POIS = [
     {"name": "Дом-музей Аксакова", "lat": 54.7135, "lon": 55.9516, "type": "attraction", "emoji": "🏛️"},
     {"name": "Музей истории Уфы", "lat": 54.7342, "lon": 55.9517, "type": "attraction", "emoji": "🏛️"},
     {"name": "Парк Кашкадан", "lat": 54.7722, "lon": 55.9483, "type": "attraction", "emoji": "🌳"},
-    {"name": "Уфимское ожерелье", "lat": 54.7267, 55.9500, "type": "attraction", "emoji": "🌳"},
+   {"name": "Уфимское ожерелье", "lat": 54.7267, "lon": 55.9500, "type": "attraction", "emoji": "🌳"},
 ]
 
 @asynccontextmanager
