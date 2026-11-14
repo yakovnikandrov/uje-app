@@ -34,7 +34,7 @@ MAP_POIS = [
     {"name": "Дом-музей Аксакова", "lat": 54.7135, "lon": 55.9516, "type": "attraction", "emoji": "🏛️"},
     {"name": "Музей истории Уфы", "lat": 54.7342, "lon": 55.9517, "type": "attraction", "emoji": "🏛️"},
     {"name": "Парк Кашкадан", "lat": 54.7722, "lon": 55.9483, "type": "attraction", "emoji": "🌳"},
-   {"name": "Уфимское ожерелье", "lat": 54.7267, "lon": 55.9500, "type": "attraction", "emoji": "🌳"},
+    {"name": "Уфимское ожерелье", "lat": 54.7267, "lon": 55.9500, "type": "attraction", "emoji": "🌳"},
 ]
 
 @asynccontextmanager
@@ -194,6 +194,16 @@ async def ask_bot(message: UserMessage):
         save_fact("guide_gender", "male")
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
+    # ✅ ТРИГГЕРЫ ПОДНЯТЫ НАВЕРХ
+    if any(word in text_lower for word in ["поесть", "голоден", "ресторан", "кафе", "перекусить", "хочу есть", "кушать", "еда"]):
+        return {"answer": "Кушать подано! Что тебе сейчас по душе?", "action": "none", "buttons": [{"label": "🥘 Национальная", "action": "[cat_national]"}, {"label": "☕ Кофе", "action": "[cat_coffee]"}, {"label": "🍔 Бюджетно", "action": "[cat_budget]"}, {"label": "🍷 Премиум", "action": "[cat_premium]"}, {"label": "👨‍👩‍👧‍👦 С детьми", "action": "[cat_kids]"}]}
+
+    if any(word in text_lower for word in ["жить", "жилье", "жильё", "гостиниц", "отель", "квартир", "снять", "переночевать", "устал", "где поспать", "где остановиться"]):
+        return {"answer": "Понял, тебе нужно жильё. Вот варианты:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
+
+    if any(word in text_lower for word in ["экскурси", "что посмотреть", "куда сходить", "куда съездить", "где погулять", "достопримечательности", "что есть в уфе", "чем заняться", "что еще", "расскажи про уфу", "хочу посмотреть"]):
+        return {"answer": "У нас тут есть всё! А что тебе сейчас больше по душе?", "action": "none", "buttons": [{"label": "🏛 История и музеи", "action": "[attr_history]"}, {"label": "🌳 Природа и парки", "action": "[attr_nature]"}, {"label": "🐎 Символы города", "action": "[attr_symbols]"}]}
+
     if user_text == "[showcase_list]":
         cards = [
             {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
@@ -236,7 +246,6 @@ async def ask_bot(message: UserMessage):
     if user_text.lower() == "хочу сюда":
         return {"answer": "Отлично! Выбери место из списка, и я проложу маршрут.", "action": "none"}
 
-    # ✅ УМНАЯ ОБРАБОТКА "ХОЧУ В ..."
     if any(word in text_lower for word in ["хочу в", "поехали в", "веди в", "поедем в", "хочу на"]):
         for attr_key, items in ATTRACTIONS.items():
             for item in items:
@@ -698,15 +707,7 @@ async def ask_bot(message: UserMessage):
                 ]
             return {"answer": "Слушай, я не понял, как ты хочешь поехать. Выбери кнопку ниже или напиши 'такси', 'автобус' или 'пешком'.", "action": "none", "buttons": btns}
 
-    if any(word in text_lower for word in ["поесть", "голоден", "ресторан", "кафе", "перекусить", "хочу есть", "кушать", "еда"]):
-        return {"answer": "Кушать подано! Что тебе сейчас по душе?", "action": "none", "buttons": [{"label": "🥘 Национальная", "action": "[cat_national]"}, {"label": "☕ Кофе", "action": "[cat_coffee]"}, {"label": "🍔 Бюджетно", "action": "[cat_budget]"}, {"label": "🍷 Премиум", "action": "[cat_premium]"}, {"label": "👨‍👩‍👧‍👦 С детьми", "action": "[cat_kids]"}]}
-
-    if any(word in text_lower for word in ["жить", "жилье", "жильё", "гостиниц", "отель", "квартир", "снять", "переночевать", "устал", "где поспать", "где остановиться"]):
-        return {"answer": "Понял, тебе нужно жильё. Вот варианты:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
-
-    if any(word in text_lower for word in ["экскурси", "что посмотреть", "куда сходить", "куда съездить", "где погулять", "достопримечательности", "что есть в уфе", "чем заняться", "что еще", "расскажи про уфу", "хочу посмотреть"]):
-        return {"answer": "У нас тут есть всё! А что тебе сейчас больше по душе?", "action": "none", "buttons": [{"label": "🏛 История и музеи", "action": "[attr_history]"}, {"label": "🌳 Природа и парки", "action": "[attr_nature]"}, {"label": "🐎 Символы города", "action": "[attr_symbols]"}]}
-
+    # ✅ ОНБОРДИНГ (ТЕПЕРЬ В САМОМ НИЗУ)
     if "name" not in facts or facts.get("name") == "":
         name_match = re.search(r'(?:меня зовут|зови меня|я)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
         if name_match: name = name_match.group(1).capitalize()
@@ -719,16 +720,22 @@ async def ask_bot(message: UserMessage):
 
     if "from_city" not in facts or "transport" not in facts:
         city_lower = user_text.lower().strip()
-        found_city = None
-        city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
         
+        # ✅ ИСПРАВЛЕНИЕ БАГА С ГОРОДАМИ (Самара, Самары)
+        city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
         if city_match:
-            found_city = city_match.group(1).lower()
+            city_to_check = city_match.group(1).lower()
         else:
-            for core, canonical in CITY_CORES.items():
-                if core in city_lower:
-                    found_city = canonical
-                    break
+            city_to_check = city_lower
+
+        found_city = None
+        for core, canonical in CITY_CORES.items():
+            if core in city_to_check:
+                found_city = canonical
+                break
+        
+        if not found_city and len(city_to_check) > 2:
+             found_city = city_to_check
         
         if found_city:
             save_fact("from_city", found_city.capitalize())
