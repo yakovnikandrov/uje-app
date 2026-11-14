@@ -194,7 +194,11 @@ async def ask_bot(message: UserMessage):
         save_fact("guide_gender", "male")
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
-    # ✅ ИСПРАВЛЕННЫЙ SHOWCASE (БЕЛЫЙ ЗАМОК, САЛАВАТ И Т.Д.)
+    if user_text.startswith("[set_home:"):
+        place_name = user_text.replace("[set_home:", "").replace("]", "")
+        save_fact("home_address", place_name)
+        return {"answer": f"Отлично! Запомнила, что ты остановился в {place_name}.", "action": "none"}
+
     if user_text.startswith("[showcase:"):
         key = user_text.replace("[showcase:", "").replace("]", "")
         name = ""
@@ -213,7 +217,6 @@ async def ask_bot(message: UserMessage):
             {"label": "📖 Подробнее", "action": "[attr_symbols]"}
         ]}
 
-    # ✅ ОБРАБОТЧИК КАРТЫ (КОГДА НАЖИМАЮТ ТОЧКУ НА LEAFLET)
     if user_text.startswith("[map:"):
         place_name = user_text.replace("[map:", "").replace("]", "")
         return {"answer": f"Ты выбрал: {place_name}. Вот что я знаю об этом месте.", "action": "none", "buttons": [
@@ -224,7 +227,6 @@ async def ask_bot(message: UserMessage):
     if user_text.lower() == "хочу сюда":
         return {"answer": "Отлично! Выбери место из списка, и я проложу маршрут.", "action": "none"}
 
-    # ✅ ОБРАБОТЧИК "ДАЛЬШЕ" ДЛЯ ПОШАГОВОГО ПРОВОДНИКА
     if user_text.lower() == "дальше":
         pending = get_pending()
         if pending and pending.get("action") == "guide_route":
@@ -366,6 +368,7 @@ async def ask_bot(message: UserMessage):
                 "image": item["image"],
                 "buttons": [
                     {"label": "📖 Подробнее", "action": f"[details_hotel:{item['name']}]"},
+                    {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
                     {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
                 ]
             })
@@ -383,6 +386,7 @@ async def ask_bot(message: UserMessage):
                 "buttons": [
                     {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
                     {"label": "💬 WhatsApp", "action": f"https://wa.me/{item['phone'].replace('+','')}", "type": "url"},
+                    {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
                     {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
                 ]
             })
@@ -400,6 +404,7 @@ async def ask_bot(message: UserMessage):
             action_type = "auto" if transport == "машина" else "taxi"
             return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n💰 {item['avg_check']}\n⭐ {item['rating']}", "action": "none", "image": item["image"], "buttons": [
                 {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
+                {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
                 {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
             ]}
 
@@ -725,6 +730,9 @@ async def ask_bot(message: UserMessage):
         return {"answer": RESPONSES["onboarding_ask_destination"], "action": "none"}
 
     if "home_address" not in facts:
+        if any(w in text_lower for w in ["сюда", "туда", "поедем", "поехали", "давай"]) and len(user_text.split()) < 5:
+             return {"answer": "Я не совсем поняла, куда именно. Назови точный адрес или отель.", "action": "none"}
+
         save_fact("home_address", user_text)
         transport = facts.get("transport", "неизвестно")
         care_msg = ""
@@ -786,6 +794,7 @@ async def ask_bot(message: UserMessage):
                     return {"answer": f"Отлично, запомнила: {user_text}. Маршрут построен!", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": user_text, "button": "Открыть Яндекс Go", "url": url}}
         return {"answer": "Адрес записала, но я не вижу, где ты. Нажми на компас 🧭!", "action": "none"}
 
+    # ✅ УНИВЕРСАЛЬНЫЙ ФОЛБЭК — ВСЕГДА ИДЕМ В ЯНДЕКС GPT, ЧТОБЫ НЕ МОЛЧАТЬ
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(executor, ask_uje_router, user_text, facts, message.history)
@@ -809,9 +818,21 @@ async def ask_bot(message: UserMessage):
                         return {"answer": f"Маршрут построен: {dest}.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest, "button": "Открыть Яндекс Go", "url": url}}
             return {"answer": "Куда едем?", "action": "none"}
         
-        return {"answer": intent.get("params", {}).get("reply", "Слушай, я немного задумалась. Давай еще раз?"), "action": "none"}
+        reply_text = intent.get("params", {}).get("reply", "").strip()
+        if not reply_text:
+            # Если пусто, идем напрямую в GPT
+            reply_text = await loop.run_in_executor(executor, ask_gpt_free, user_text, message.history)
+        
+        return {"answer": reply_text or "Слушай, я тут немного задумалась, но давай попробуем еще раз?", "action": "none"}
+        
     except Exception as e:
-        return {"answer": "У меня тут небольшие помехи. Давай еще раз попробуем?", "action": "none"}
+        # Если что-то упало, тоже идем в GPT
+        try:
+            loop = asyncio.get_running_loop()
+            fallback_reply = await loop.run_in_executor(executor, ask_gpt_free, user_text, message.history)
+            return {"answer": fallback_reply or "Я на связи, но у меня тут небольшие помехи. Попробуй еще раз!", "action": "none"}
+        except:
+            return {"answer": "У меня тут небольшие помехи. Давай еще раз попробуем?", "action": "none"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

@@ -11,18 +11,32 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #f4f6f8; color: #333; width: 100vw; max-width: 100vw; overflow-x: hidden; height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-        .header { background: linear-gradient(to bottom, #005BBB 0%, #005BBB 33%, #FFFFFF 33%, #FFFFFF 66%, #00843D 66%, #00843D 100%); border-bottom: 4px solid #FFD700; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; min-height: 75px; }
-        .header-emblem { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 60px; width: auto; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6)); z-index: 1; }
-        .logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 10px; z-index: 2; }
-        .header-info { display: flex; align-items: center; gap: 15px; font-size: 0.95rem; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); z-index: 2; }
-        .map-toggle-btn { background: #FFD700; color: #005BBB; border: none; border-radius: 20px; padding: 5px 12px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        
+        /* ✅ ОБНОВЛЕННАЯ ШАПКА */
+        .header { background: linear-gradient(to bottom, #005BBB 0%, #005BBB 33%, #FFFFFF 33%, #FFFFFF 66%, #00843D 66%, #00843D 100%); border-bottom: 4px solid #FFD700; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 10; min-height: 65px; }
+        .header-emblem { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: 45px; width: auto; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6)); z-index: 1; }
+        .logo { font-size: 1.2rem; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 8px; z-index: 2; }
+        .header-right { display: flex; align-items: center; gap: 10px; z-index: 2; }
+        .weather-clock { display: flex; flex-direction: column; align-items: flex-end; font-size: 0.75rem; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); line-height: 1.1; }
+        .burger-btn { background: #FFD700; color: #005BBB; border: none; border-radius: 8px; width: 35px; height: 35px; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
         .ticker-wrap { width: 100%; overflow: hidden; background: #fff; border-bottom: 1px solid #e1e8ed; padding: 4px 0; flex-shrink: 0; }
-        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 25s linear infinite; color: #005BBB; font-weight: bold; font-size: 0.95rem; letter-spacing: 1px; }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 25s linear infinite; color: #005BBB; font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; }
         @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
         
+        /* ✅ БОКОВОЕ МЕНЮ */
+        .side-menu { position: fixed; top: 0; right: -300px; width: 280px; height: 100%; background: #fff; z-index: 200; box-shadow: -5px 0 15px rgba(0,0,0,0.1); transition: 0.3s ease-in-out; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+        .side-menu.open { right: 0; }
+        .side-menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; display: none; }
+        .side-menu-overlay.open { display: block; }
+        .menu-title { font-size: 1.2rem; font-weight: bold; color: #166b43; margin-bottom: 15px; border-bottom: 2px solid #e1e8ed; padding-bottom: 10px; }
+        .menu-btn { background: #f4f6f8; color: #005BBB; border: 1px solid #e1e8ed; padding: 12px 15px; border-radius: 10px; text-align: left; font-size: 1rem; font-weight: bold; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+        .menu-btn:hover { background: #005BBB; color: white; }
+        .menu-btn.close-btn { background: #ffebee; color: #d32f2f; border-color: #ffcdd2; margin-top: auto; }
+
         .app-layout { display: flex; flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; overflow: hidden; position: relative; }
         
-        .sidebar { width: 220px; padding: 15px 10px; display: flex; flex-direction: column; gap: 15px; flex-shrink: 0; overflow-y: auto; }
+        .sidebar { width: 220px; padding: 15px 10px; display: none; flex-direction: column; gap: 15px; flex-shrink: 0; overflow-y: auto; }
         .sidebar::-webkit-scrollbar { width: 0; }
         
         .showcase-card { background: #fff; border-radius: 15px; overflow: hidden; cursor: pointer; border: 1px solid #e1e8ed; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -34,7 +48,7 @@
         #chat-container { flex: 1; padding: 20px 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         
         .message { padding: 12px 16px; border-radius: 16px; max-width: 85%; line-height: 1.5; font-size: 0.95rem; animation: fadeIn 0.3s ease-out; word-wrap: break-word; }
-        .message.bot { background-color: #fff; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); white-space: pre-wrap; }
+        .message.bot { background-color: #fff; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
         .message.user { background-color: #166b43; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 1px 3px rgba(22,107,67,0.2); }
         .chat-img { width: 100%; border-radius: 12px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: block; }
 
@@ -57,11 +71,7 @@
 
         .bottom-panel { flex-shrink: 0; padding: 10px 15px 15px; width: 100%; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
         
-        .main-actions { display: flex; gap: 8px; padding: 8px 15px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(to right, #005BBB 0%, #FFFFFF 50%, #00843D 100%); }
-        .main-actions::-webkit-scrollbar { display: none; }
-        .main-action-btn { background: rgba(255, 255, 255, 0.95); color: #005BBB; border: 1px solid #e1e8ed; padding: 8px 14px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-size: 0.85rem; transition: 0.2s; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .main-action-btn:hover { background: #005BBB; color: white; border-color: #005BBB; }
-
+        /* ✅ РАСШИРЕННОЕ ПОЛЕ ВВОДА */
         .input-area { display: flex; background: #fff; padding: 5px 5px 5px 10px; border-radius: 24px; align-items: flex-end; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e1e8ed; }
         
         #guide-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; border: 2px solid #166b43; margin-right: 8px; margin-bottom: 2px; flex-shrink: 0; opacity: 0.4; transition: opacity 0.3s, transform 0.3s, box-shadow 0.3s; background: #e1e8ed; }
@@ -72,16 +82,10 @@
         textarea { flex: 1; background: transparent; border: none; color: #333; font-size: 1rem; outline: none; resize: none; max-height: 120px; padding: 10px 0; font-family: inherit; line-height: 1.4; }
         .btn-circle { border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: 5px; flex-shrink: 0; margin-bottom: 2px; transition: 0.2s; }
         #sendBtn { background: #166b43; color: white; font-size: 1.2rem; }
-        #micBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
-        #micBtn.listening { background: #ffebee; color: #d32f2f; animation: pulse 1s infinite; }
-        #voiceToggleBtn { background: #f0f2f5; color: #333; font-size: 1.1rem; }
-        #voiceToggleBtn.muted { color: #d32f2f; }
-        #attachBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
-        #geoBtn { background: #166b43; color: white; font-size: 1.2rem; display: none; }
         
-        #guideModeBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; }
-        #guideModeBtn.active { background: #00843D; color: white; animation: pulseGreen 2s infinite; }
-        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(0, 132, 61, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 132, 61, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 132, 61, 0); } }
+        /* ✅ КНОПКА МИКРОФОНА (РАЦИЯ) */
+        #micBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; user-select: none; -webkit-user-select: none; touch-action: none; }
+        #micBtn.listening { background: #ffebee; color: #d32f2f; animation: pulse 1s infinite; transform: scale(1.1); }
 
         #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f8; z-index: 100; display: none; flex-direction: column; }
         #map { flex: 1; width: 100%; }
@@ -97,35 +101,65 @@
         .action-card-text { font-size: 0.85rem; color: #666; margin-top: 3px; }
         .action-card-btn { display: block; text-align: center; background: #166b43; color: white; text-decoration: none; padding: 10px; font-weight: bold; font-size: 1rem; }
 
+        /* ✅ МОБИЛЬНАЯ АДАПТАЦИЯ */
         @media (max-width: 900px) {
-            .sidebar { display: none; }
-            .mobile-promo { display: flex; overflow-x: auto; padding: 10px 15px; gap: 10px; background: #f4f6f8; scrollbar-width: none; }
-            .mobile-promo::-webkit-scrollbar { display: none; }
-            .mobile-promo .showcase-card { min-width: 200px; flex-shrink: 0; }
-            .mobile-promo .showcase-img { height: 100px; }
+            .sidebar { display: none !important; }
             .header { padding: 5px 10px; min-height: 60px; }
             .logo { font-size: 1.1rem; }
-            .header-emblem { height: 40px; }
-            .header-info { gap: 8px; font-size: 0.8rem; }
-            #clock { display: none; }
+            .header-emblem { height: 35px; }
             #guide-avatar { width: 32px; height: 32px; }
+            
+            /* ✅ УМЕНЬШАЕМ И ДЕЛАЕМ КРУГЛЫМИ ГИДОВ */
+            .guide-selection { gap: 15px; }
+            .guide-card { width: 80px; }
+            .guide-img { width: 80px; height: 80px; border-radius: 50%; border-width: 2px; }
+            .guide-name { font-size: 0.8rem; margin-top: 5px; }
         }
-        @media (min-width: 901px) { .mobile-promo { display: none; } }
+        @media (min-width: 901px) {
+            .sidebar { display: flex; }
+            .burger-btn { display: none; }
+            .header-right { gap: 15px; }
+            .weather-clock { flex-direction: row; gap: 10px; font-size: 0.95rem; }
+        }
     </style>
 </head>
 <body>
-    <button onclick="resetBot()" style="position: absolute; top: 15px; right: 50px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
+    <button onclick="resetBot()" style="position: absolute; top: 75px; right: 15px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
+    
     <header class="header">
         <div class="logo">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 8 8 9.2 9 10.2V16C9 18 7.5 19.5 5.5 19.5H4V22H5.5C8 22 10 20.5 11 18.5C11.5 19.5 12 20 13 21H14.5C15.5 20 16 19.5 16.5 18.5C17.5 20.5 19.5 22 22 22H23.5V19.5H22C20 19.5 18.5 18 18.5 16V10.2C19.5 9.2 20 8 20 6.5C20 4 18 2 15.5 2H12ZM12 4H15.5C16.8 4 18 5.2 18 6.5C18 7.8 16.8 9 15.5 9H12V4ZM10.5 9H12V11.5H10.5C10.5 10.5 10.5 9.5 10.5 9Z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 8 8 9.2 9 10.2V16C9 18 7.5 19.5 5.5 19.5H4V22H5.5C8 22 10 20.5 11 18.5C11.5 19.5 12 20 13 21H14.5C15.5 20 16 19.5 16.5 18.5C17.5 20.5 19.5 22 22 22H23.5V19.5H22C20 19.5 18.5 18 18.5 16V10.2C19.5 9.2 20 8 20 6.5C20 4 18 2 15.5 2H12ZM12 4H15.5C16.8 4 18 5.2 18 6.5C18 7.8 16.8 9 15.5 9H12V4ZM10.5 9H12V11.5H10.5C10.5 10.5 10.5 9.5 10.5 9Z"/></svg>
             БАШГИД
         </div>
-        <div class="header-emblem"><img src="/static/gerb.png" alt="Герб Башкортостана" style="height: 100%; width: auto;"></div>
-        <div class="header-info">
-            <button class="map-toggle-btn" onclick="toggleMap()">🗺️ Карта</button>
-            <div id="weather">⏳</div><div id="clock">--:--</div>
+        <div class="header-emblem"><img src="/static/gerb.png" alt="Герб" style="height: 100%; width: auto;"></div>
+        <div class="header-right">
+            <div class="weather-clock">
+                <div id="weather">⏳</div>
+                <div id="clock">--:--</div>
+            </div>
+            <button class="burger-btn" onclick="toggleMenu()">☰</button>
         </div>
     </header>
+    
+    <div class="side-menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-title">Меню гида</div>
+        <button class="menu-btn" onclick="menuAction('toggleMap()')">🗺️ Открыть карту</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[attr_history]\')')">🏛 Что посмотреть</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[food_start]\')')">🍽 Где поесть</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[housing_start]\')')">🏨 Где жить</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[route_interests_start]\')')">📅 Маршрут по интересам</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[call_taxi_start]\')')">🚕 Такси</button>
+        
+        <div style="border-top: 1px solid #e1e8ed; margin: 10px 0;"></div>
+        
+        <button class="menu-btn" onclick="document.getElementById('fileInput').click(); toggleMenu();">📎 Прикрепить файл</button>
+        <button class="menu-btn" onclick="menuAction('toggleVoice()')" id="menuVoiceBtn">🔊 Звук: Вкл</button>
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[showcase:salavat_flowers]\')')">🖼️ Достопримечательности</button>
+
+        <button class="menu-btn close-btn" onclick="toggleMenu()">✖ Закрыть меню</button>
+    </div>
+
     <div class="ticker-wrap"><div class="ticker">Рәхим итегез! Добро пожаловать в Башкирию!</div></div>
     
     <div class="app-layout">
@@ -141,43 +175,19 @@
         </div>
 
         <div class="center-panel">
-            <div class="mobile-promo" id="mobile-promo">
-                 <div class="showcase-card" onclick="quickAction('[showcase:salavat_flowers]')">
-                    <img src="/static/img/showcase_salavat_flowers.jpg" class="showcase-img" alt="Салават Юлаев">
-                    <div class="showcase-title">🐎 Салават Юлаев</div>
-                </div>
-                <div class="showcase-card" onclick="quickAction('[showcase:friendship]')">
-                    <img src="/static/img/showcase_friendship.jpg" class="showcase-img" alt="Монумент Дружбы">
-                    <div class="showcase-title">🏛 Монумент Дружбы</div>
-                </div>
-                <div class="showcase-card" onclick="quickAction('[showcase:castle]')">
-                    <img src="/static/img/showcase_castle.jpg" class="showcase-img" alt="Замок">
-                    <div class="showcase-title">🏰 Белый Замок</div>
-                </div>
-                <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
-                    <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават крупным планом">
-                    <div class="showcase-title">🐎 Салават</div>
-                </div>
-            </div>
             <div id="chat-container"></div>
             <div class="bottom-panel">
-                <div class="main-actions">
-                    <button class="main-action-btn" onclick="quickAction('[attr_history]')">🏛 Что посмотреть</button>
-                    <button class="main-action-btn" onclick="quickAction('[food_start]')">🍽 Где поесть</button>
-                    <button class="main-action-btn" onclick="quickAction('[housing_start]')">🏨 Где жить</button>
-                    <button class="main-action-btn" onclick="quickAction('[call_taxi_start]')">🚕 Такси</button>
-                    <button class="main-action-btn" onclick="quickAction('[route_interests_start]')">📅 Маршрут по интересам</button>
-                </div>
-
                 <div class="input-area">
                     <div id="guide-avatar"><img id="avatar-img" src="/static/img/guide_female.jpg" alt="Гид"></div>
-                    <textarea id="userInput" placeholder="Напиши или скажи..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                    <textarea id="userInput" placeholder="Напиши или зажми микрофон..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
                     <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload(event)">
-                    <button class="btn-circle" id="geoBtn" onclick="getLocation()">🧭</button>
-                    <button class="btn-circle" id="attachBtn" onclick="document.getElementById('fileInput').click()">📎</button>
-                    <button class="btn-circle" id="voiceToggleBtn" onclick="toggleVoice()">🔊</button>
-                    <button class="btn-circle" id="guideModeBtn" onclick="toggleGuideMode()" title="Режим гида (Beta): непрерывный диалог голосом">🎧</button>
-                    <button class="btn-circle" id="micBtn" onclick="toggleMic()">🎤</button>
+                    
+                    <button class="btn-circle" id="micBtn" 
+                        ontouchstart="startMic(event)" 
+                        ontouchend="stopMic(event)" 
+                        onmousedown="startMic(event)" 
+                        onmouseup="stopMic(event)">🎤</button>
+                    
                     <button class="btn-circle" id="sendBtn" onclick="sendRequest()">↑</button>
                 </div>
             </div>
@@ -189,7 +199,7 @@
                 <div class="showcase-title">🏰 Белый Замок</div>
             </div>
             <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
-                <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават крупным планом">
+                <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават">
                 <div class="showcase-title">🐎 Салават</div>
             </div>
         </div>
@@ -205,7 +215,31 @@
         const userInputField = document.getElementById('userInput');
         let chatHistory = [], map, mapInitialized = false, pendingVoiceText = null, hasInteracted = false;
         let isProcessing = false;
-        let isGuideMode = false; 
+
+        function toggleMenu() {
+            document.getElementById('sideMenu').classList.toggle('open');
+            document.getElementById('menuOverlay').classList.toggle('open');
+        }
+        function menuAction(actionStr) {
+            toggleMenu();
+            setTimeout(() => { eval(actionStr); }, 300);
+        }
+
+        function startMic(e) {
+            if (e) e.preventDefault(); 
+            if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
+            if (isProcessing) return;
+            
+            userInputField.value = ""; 
+            try { recognition.start(); } catch(err) {}
+        }
+
+        function stopMic(e) {
+            if (e) e.preventDefault();
+            if (isListening && recognition) {
+                recognition.stop();
+            }
+        }
 
         function showAvatar() {
             const avatar = document.getElementById('guide-avatar');
@@ -223,20 +257,6 @@
         function playPendingVoice() { if (pendingVoiceText && !hasInteracted) { hasInteracted = true; speak(pendingVoiceText); pendingVoiceText = null; } }
         document.body.addEventListener('click', playPendingVoice); document.body.addEventListener('keydown', playPendingVoice); document.body.addEventListener('touchstart', playPendingVoice);
 
-        function toggleGuideMode() {
-            isGuideMode = !isGuideMode;
-            const btn = document.getElementById('guideModeBtn');
-            if (isGuideMode) {
-                btn.classList.add('active');
-                userInputField.placeholder = "🎧 Режим гида: говорите...";
-                if (recognition && !isListening && !isProcessing) recognition.start();
-            } else {
-                btn.classList.remove('active');
-                userInputField.placeholder = "Напиши или скажи...";
-                if (isListening && recognition) recognition.stop();
-            }
-        }
-
         async function speak(text) {
             if (!isVoiceEnabled) return;
             if (isListening && recognition) recognition.stop(); 
@@ -250,71 +270,48 @@
                 if (res.ok) { 
                     const blob = await res.blob(); 
                     audioPlayer.src = URL.createObjectURL(blob); 
-                    audioPlayer.onended = () => {
-                        hideAvatar();
-                        if (isGuideMode && !isProcessing && recognition) {
-                            setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
-                        }
-                    };
+                    audioPlayer.onended = hideAvatar;
                     audioPlayer.play(); 
-                } else {
-                    hideAvatar();
-                    if (isGuideMode && !isProcessing && recognition) {
-                        setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
-                    }
-                }
-            } catch (e) { 
-                console.error("TTS Error:", e); 
-                hideAvatar(); 
-                if (isGuideMode && !isProcessing && recognition) {
-                    setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 500);
-                }
-            }
+                } else { hideAvatar(); }
+            } catch (e) { console.error("TTS Error:", e); hideAvatar(); }
         }
 
-        function toggleVoice() { isVoiceEnabled = !isVoiceEnabled; const btn = document.getElementById('voiceToggleBtn'); btn.innerText = isVoiceEnabled ? '🔊' : '🔇'; btn.classList.toggle('muted', !isVoiceEnabled); if(!isVoiceEnabled) { audioPlayer.pause(); audioPlayer.currentTime = 0; hideAvatar(); } }
+        function toggleVoice() { 
+            isVoiceEnabled = !isVoiceEnabled; 
+            const btn = document.getElementById('menuVoiceBtn'); 
+            btn.innerText = isVoiceEnabled ? '🔊 Звук: Вкл' : '🔇 Звук: Выкл'; 
+            if(!isVoiceEnabled) { audioPlayer.pause(); audioPlayer.currentTime = 0; hideAvatar(); } 
+        }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null, isListening = false, silenceTimer = null;
+        let recognition = null, isListening = false;
         if (SpeechRecognition) {
-            recognition = new SpeechRecognition(); recognition.lang = 'ru-RU'; recognition.continuous = true; recognition.interimResults = true;
+            recognition = new SpeechRecognition(); 
+            recognition.lang = 'ru-RU'; 
+            recognition.continuous = true; 
+            recognition.interimResults = true;
             
             recognition.onstart = () => { 
                 isListening = true; 
                 document.getElementById('micBtn').classList.add('listening'); 
-                if (!isGuideMode) userInputField.placeholder = "Слушаю..."; 
+                userInputField.placeholder = "Говорите..."; 
             };
             
             recognition.onresult = (event) => {
                 let final = '', interim = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) final += event.results[i][0].transcript; else interim += event.results[i][0].transcript; }
+                for (let i = event.resultIndex; i < event.results.length; ++i) { 
+                    if (event.results[i].isFinal) final += event.results[i][0].transcript; 
+                    else interim += event.results[i][0].transcript; 
+                }
                 userInputField.value = (final + interim).trim();
-                userInputField.style.height = 'auto'; userInputField.style.height = userInputField.scrollHeight + 'px';
-                
-                if (silenceTimer) clearTimeout(silenceTimer);
-                const timeout = isGuideMode ? 5000 : 4000; 
-                
-                if (userInputField.value.length > 0) silenceTimer = setTimeout(() => { 
-                    if (isListening) { 
-                        recognition.stop(); 
-                        if (userInputField.value.trim()) sendRequest(); 
-                    } 
-                }, timeout); 
+                userInputField.style.height = 'auto'; 
+                userInputField.style.height = userInputField.scrollHeight + 'px';
             };
             
             recognition.onend = () => { 
                 isListening = false; 
                 document.getElementById('micBtn').classList.remove('listening'); 
-                if (isGuideMode && !isProcessing) {
-                    userInputField.placeholder = "🎧 Режим гида: ожидание...";
-                    setTimeout(() => {
-                        if (isGuideMode && !isListening && !isProcessing) {
-                            try { recognition.start(); } catch(e) {}
-                        }
-                    }, 1000);
-                } else if (!isGuideMode) {
-                    userInputField.placeholder = "Напиши или скажи..."; 
-                }
+                userInputField.placeholder = "Напиши или зажми микрофон..."; 
             };
             
             recognition.onerror = (event) => { 
@@ -322,12 +319,6 @@
                 isListening = false; 
                 document.getElementById('micBtn').classList.remove('listening'); 
             };
-        }
-
-        function toggleMic() {
-            if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
-            if (isListening) { recognition.stop(); if (silenceTimer) clearTimeout(silenceTimer); if (userInputField.value.trim()) sendRequest(); } 
-            else { userInputField.value = ""; recognition.start(); }
         }
 
         function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (isListening && recognition) recognition.stop(); sendRequest(); } }
@@ -349,11 +340,12 @@
             if (text === '[select_guide:female]') { localStorage.setItem('guide_gender', 'female'); setGuideAvatar('female'); }
             if (text === '[select_guide:male]') { localStorage.setItem('guide_gender', 'male'); setGuideAvatar('male'); }
 
-            if (!text.startsWith("[showcase:") && !text.startsWith("[delivery_") && !text.startsWith("[cat_") && !text.startsWith("[food_start]") && !text.startsWith("[attr_") && !text.startsWith("[route:") && !text.startsWith("[transport:") && !text.startsWith("[select_guide:") && !text.startsWith("[details_") && !text.startsWith("[housing_") && !text.startsWith("[call_phone:") && !text.startsWith("[ri_") && !text.startsWith("[route_interests_start]") && !text.startsWith("[map:")) {
+            if (!text.startsWith("[showcase:") && !text.startsWith("[delivery_") && !text.startsWith("[cat_") && !text.startsWith("[food_start]") && !text.startsWith("[attr_") && !text.startsWith("[route:") && !text.startsWith("[transport:") && !text.startsWith("[select_guide:") && !text.startsWith("[details_") && !text.startsWith("[housing_") && !text.startsWith("[call_phone:") && !text.startsWith("[ri_") && !text.startsWith("[route_interests_start]") && !text.startsWith("[map:") && !text.startsWith("[set_home:")) {
                 addMessage(text, 'user'); 
                 chatHistory.push({ role: "user", text: text });
             }
             userInputField.value = ''; userInputField.style.height = 'auto'; 
+            userInputField.placeholder = "Напиши или зажми микрофон...";
             const loadingId = addMessage("...", 'bot');
             
             try {
@@ -496,7 +488,6 @@
                         cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
                         msgDiv.appendChild(cardDiv);
                     }
-                    if (data.answer.includes("компас") || data.answer.includes("координат")) document.getElementById('geoBtn').style.display = 'flex';
                 }
             } catch (e) { 
                 console.error(e);
@@ -505,15 +496,18 @@
                 addMessage('Ошибка связи.', 'bot'); 
             } finally {
                 isProcessing = false;
-                if (isGuideMode && !isListening && recognition) {
-                     setTimeout(() => { if(isGuideMode && !isListening) recognition.start(); }, 1000);
-                }
             }
         }
 
         function addMessage(text, sender) {
-            const container = document.getElementById('chat-container'); const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${sender}`; msgDiv.textContent = text;
+            const container = document.getElementById('chat-container'); 
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            
+            let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            formattedText = formattedText.replace(/\n/g, '<br>');
+            msgDiv.innerHTML = formattedText; 
+            
             const id = 'msg-' + Date.now() + Math.floor(Math.random() * 100); msgDiv.id = id;
             container.appendChild(msgDiv); container.scrollTop = container.scrollHeight; return id;
         }
@@ -607,46 +601,6 @@
             const formData = new FormData(); formData.append("file", file);
             fetch('/api/upload', { method: 'POST', body: formData }).then(res => res.json()).then(data => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage(data.answer, 'bot'); speak(data.answer); }).catch(() => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage('Ошибка при загрузке.', 'bot'); });
             event.target.value = '';
-        }
-
-        async function getLocation() {
-            if (navigator.geolocation) {
-                const geoBtn = document.getElementById('geoBtn'); geoBtn.style.display = 'none';
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    try {
-                        const data = await (await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) })).json();
-                        if (data.answer) {
-                            const msgId = addMessage(data.answer, 'bot'); speak(data.answer);
-                            const msgDiv = document.getElementById(msgId);
-
-                            if (data.buttons && data.buttons.length > 0) {
-                                const btnContainer = document.createElement('div');
-                                btnContainer.style.marginTop = '10px'; btnContainer.style.display = 'flex'; btnContainer.style.flexWrap = 'wrap'; btnContainer.style.gap = '8px';
-                                data.buttons.forEach(btn => {
-                                    const button = document.createElement('button'); 
-                                    button.className = 'quick-btn'; 
-                                    button.style.margin = '0'; button.style.padding = '8px 12px'; button.style.borderRadius = '15px'; button.style.border = 'none'; button.style.background = '#e1e8ed'; button.style.cursor = 'pointer'; button.style.fontSize = '0.9rem';
-                                    button.textContent = btn.label; 
-                                    button.onclick = () => quickAction(btn.action); 
-                                    btnContainer.appendChild(button);
-                                });
-                                msgDiv.appendChild(btnContainer);
-                            }
-
-                            if (data.action === "show_card" && data.card) {
-                                const card = data.card;
-                                const cardDiv = document.createElement('div'); cardDiv.className = "action-card";
-                                let icon = card.type === "taxi" ? "🚕" : (card.type === "map" ? "🗺️" : "📌");
-                                cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
-                                msgDiv.appendChild(cardDiv);
-                            }
-                        } else {
-                            const zoneText = data.zone === "ufa_center" ? "Вы в центре Уфы" : "Вы в Уфе";
-                            addMessage(`Геолокация включена! ${zoneText}.`, 'bot'); speak(`Геолокация включена!`);
-                        }
-                    } catch (e) { console.error(e); }
-                }, (error) => { alert("Вы отклонили геолокацию."); geoBtn.style.display = 'flex'; });
-            }
         }
     </script>
 </body>
