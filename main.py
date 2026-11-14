@@ -34,7 +34,7 @@ MAP_POIS = [
     {"name": "Дом-музей Аксакова", "lat": 54.7135, "lon": 55.9516, "type": "attraction", "emoji": "🏛️"},
     {"name": "Музей истории Уфы", "lat": 54.7342, "lon": 55.9517, "type": "attraction", "emoji": "🏛️"},
     {"name": "Парк Кашкадан", "lat": 54.7722, "lon": 55.9483, "type": "attraction", "emoji": "🌳"},
-    {"name": "Уфимское ожерелье", "lat": 54.7267, "lon": 55.9500, "type": "attraction", "emoji": "🌳"},
+    {"name": "Уфимское ожерелье", "lat": 54.7267, 55.9500, "type": "attraction", "emoji": "🌳"},
 ]
 
 @asynccontextmanager
@@ -194,6 +194,15 @@ async def ask_bot(message: UserMessage):
         save_fact("guide_gender", "male")
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
+    if user_text == "[showcase_list]":
+        cards = [
+            {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
+            {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/showcase_castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
+            {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/showcase_friendship.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
+            {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]}
+        ]
+        return {"answer": "Выбери, что тебе интересно:", "action": "show_cards", "cards": cards}
+
     if user_text.startswith("[set_home:"):
         place_name = user_text.replace("[set_home:", "").replace("]", "")
         save_fact("home_address", place_name)
@@ -214,7 +223,7 @@ async def ask_bot(message: UserMessage):
         
         return {"answer": ans, "action": "none", "image": f"/static/img/showcase_{key}.jpg", "buttons": [
             {"label": "📍 Как доехать", "action": f"[route:walk:{name}]"},
-            {"label": "📖 Подробнее", "action": "[attr_symbols]"}
+            {"label": "📖 Другие места", "action": "[showcase_list]"}
         ]}
 
     if user_text.startswith("[map:"):
@@ -226,6 +235,18 @@ async def ask_bot(message: UserMessage):
 
     if user_text.lower() == "хочу сюда":
         return {"answer": "Отлично! Выбери место из списка, и я проложу маршрут.", "action": "none"}
+
+    # ✅ УМНАЯ ОБРАБОТКА "ХОЧУ В ..."
+    if any(word in text_lower for word in ["хочу в", "поехали в", "веди в", "поедем в", "хочу на"]):
+        for attr_key, items in ATTRACTIONS.items():
+            for item in items:
+                if item["name"].lower() in text_lower:
+                    return {"answer": f"Отличный выбор! Как поедем до {item['name']}?", "action": "none", "buttons": [
+                        {"label": "🚕 Такси", "action": f"[route:taxi:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
+                        {"label": "🚗 На авто", "action": f"[route:auto:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
+                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
+                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                    ]}
 
     if user_text.lower() == "дальше":
         pending = get_pending()
@@ -730,8 +751,8 @@ async def ask_bot(message: UserMessage):
         return {"answer": RESPONSES["onboarding_ask_destination"], "action": "none"}
 
     if "home_address" not in facts:
-        if any(w in text_lower for w in ["сюда", "туда", "поедем", "поехали", "давай"]) and len(user_text.split()) < 5:
-             return {"answer": "Я не совсем поняла, куда именно. Назови точный адрес или отель.", "action": "none"}
+        if any(w in text_lower for w in ["сюда", "туда", "поедем", "поехали", "давай", "выбрал"]) and len(user_text.split()) < 6:
+             return {"answer": "Я не совсем поняла, куда именно. Назови точный адрес, отель или место.", "action": "none"}
 
         save_fact("home_address", user_text)
         transport = facts.get("transport", "неизвестно")
@@ -794,7 +815,6 @@ async def ask_bot(message: UserMessage):
                     return {"answer": f"Отлично, запомнила: {user_text}. Маршрут построен!", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": user_text, "button": "Открыть Яндекс Go", "url": url}}
         return {"answer": "Адрес записала, но я не вижу, где ты. Нажми на компас 🧭!", "action": "none"}
 
-    # ✅ УНИВЕРСАЛЬНЫЙ ФОЛБЭК — ВСЕГДА ИДЕМ В ЯНДЕКС GPT, ЧТОБЫ НЕ МОЛЧАТЬ
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(executor, ask_uje_router, user_text, facts, message.history)
@@ -820,13 +840,11 @@ async def ask_bot(message: UserMessage):
         
         reply_text = intent.get("params", {}).get("reply", "").strip()
         if not reply_text:
-            # Если пусто, идем напрямую в GPT
             reply_text = await loop.run_in_executor(executor, ask_gpt_free, user_text, message.history)
         
         return {"answer": reply_text or "Слушай, я тут немного задумалась, но давай попробуем еще раз?", "action": "none"}
         
     except Exception as e:
-        # Если что-то упало, тоже идем в GPT
         try:
             loop = asyncio.get_running_loop()
             fallback_reply = await loop.run_in_executor(executor, ask_gpt_free, user_text, message.history)

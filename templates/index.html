@@ -87,6 +87,9 @@
         #micBtn { background: #f0f2f5; color: #333; font-size: 1.2rem; user-select: none; -webkit-user-select: none; touch-action: none; }
         #micBtn.listening { background: #ffebee; color: #d32f2f; animation: pulse 1s infinite; transform: scale(1.1); }
 
+        /* ✅ КОМПАС ВОЗВРАЩЕН */
+        #geoBtn { background: #FFD700; color: #005BBB; font-size: 1.2rem; display: none; }
+
         #map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f8; z-index: 100; display: none; flex-direction: column; }
         #map { flex: 1; width: 100%; }
         .close-map-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #166b43; color: white; border: none; border-radius: 20px; padding: 8px 15px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
@@ -109,7 +112,6 @@
             .header-emblem { height: 35px; }
             #guide-avatar { width: 32px; height: 32px; }
             
-            /* ✅ УМЕНЬШАЕМ И ДЕЛАЕМ КРУГЛЫМИ ГИДОВ */
             .guide-selection { gap: 15px; }
             .guide-card { width: 80px; }
             .guide-img { width: 80px; height: 80px; border-radius: 50%; border-width: 2px; }
@@ -155,7 +157,9 @@
         
         <button class="menu-btn" onclick="document.getElementById('fileInput').click(); toggleMenu();">📎 Прикрепить файл</button>
         <button class="menu-btn" onclick="menuAction('toggleVoice()')" id="menuVoiceBtn">🔊 Звук: Вкл</button>
-        <button class="menu-btn" onclick="menuAction('quickAction(\'[showcase:salavat_flowers]\')')">🖼️ Достопримечательности</button>
+        
+        <!-- ✅ ВЫЗОВ ГАЛЕРЕИ -->
+        <button class="menu-btn" onclick="menuAction('quickAction(\'[showcase_list]\')')">🖼️ Достопримечательности</button>
 
         <button class="menu-btn close-btn" onclick="toggleMenu()">✖ Закрыть меню</button>
     </div>
@@ -181,6 +185,9 @@
                     <div id="guide-avatar"><img id="avatar-img" src="/static/img/guide_female.jpg" alt="Гид"></div>
                     <textarea id="userInput" placeholder="Напиши или зажми микрофон..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
                     <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload(event)">
+                    
+                    <!-- ✅ КОМПАС ВОЗВРАЩЕН СЮДА -->
+                    <button class="btn-circle" id="geoBtn" onclick="getLocation()">🧭</button>
                     
                     <button class="btn-circle" id="micBtn" 
                         ontouchstart="startMic(event)" 
@@ -340,7 +347,7 @@
             if (text === '[select_guide:female]') { localStorage.setItem('guide_gender', 'female'); setGuideAvatar('female'); }
             if (text === '[select_guide:male]') { localStorage.setItem('guide_gender', 'male'); setGuideAvatar('male'); }
 
-            if (!text.startsWith("[showcase:") && !text.startsWith("[delivery_") && !text.startsWith("[cat_") && !text.startsWith("[food_start]") && !text.startsWith("[attr_") && !text.startsWith("[route:") && !text.startsWith("[transport:") && !text.startsWith("[select_guide:") && !text.startsWith("[details_") && !text.startsWith("[housing_") && !text.startsWith("[call_phone:") && !text.startsWith("[ri_") && !text.startsWith("[route_interests_start]") && !text.startsWith("[map:") && !text.startsWith("[set_home:")) {
+            if (!text.startsWith("[showcase:") && !text.startsWith("[showcase_list]") && !text.startsWith("[delivery_") && !text.startsWith("[cat_") && !text.startsWith("[food_start]") && !text.startsWith("[attr_") && !text.startsWith("[route:") && !text.startsWith("[transport:") && !text.startsWith("[select_guide:") && !text.startsWith("[details_") && !text.startsWith("[housing_") && !text.startsWith("[call_phone:") && !text.startsWith("[ri_") && !text.startsWith("[route_interests_start]") && !text.startsWith("[map:") && !text.startsWith("[set_home:")) {
                 addMessage(text, 'user'); 
                 chatHistory.push({ role: "user", text: text });
             }
@@ -488,6 +495,11 @@
                         cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
                         msgDiv.appendChild(cardDiv);
                     }
+                    
+                    // ✅ ПОКАЗЫВАЕМ КОМПАС, ЕСЛИ БОТ ПРОСИТ
+                    if (data.answer.includes("компас") || data.answer.includes("координат")) {
+                        document.getElementById('geoBtn').style.display = 'flex';
+                    }
                 }
             } catch (e) { 
                 console.error(e);
@@ -601,6 +613,46 @@
             const formData = new FormData(); formData.append("file", file);
             fetch('/api/upload', { method: 'POST', body: formData }).then(res => res.json()).then(data => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage(data.answer, 'bot'); speak(data.answer); }).catch(() => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage('Ошибка при загрузке.', 'bot'); });
             event.target.value = '';
+        }
+
+        async function getLocation() {
+            if (navigator.geolocation) {
+                const geoBtn = document.getElementById('geoBtn'); geoBtn.style.display = 'none'; // Прячем сразу после нажатия
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    try {
+                        const data = await (await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) })).json();
+                        if (data.answer) {
+                            const msgId = addMessage(data.answer, 'bot'); speak(data.answer);
+                            const msgDiv = document.getElementById(msgId);
+
+                            if (data.buttons && data.buttons.length > 0) {
+                                const btnContainer = document.createElement('div');
+                                btnContainer.style.marginTop = '10px'; btnContainer.style.display = 'flex'; btnContainer.style.flexWrap = 'wrap'; btnContainer.style.gap = '8px';
+                                data.buttons.forEach(btn => {
+                                    const button = document.createElement('button'); 
+                                    button.className = 'quick-btn'; 
+                                    button.style.margin = '0'; button.style.padding = '8px 12px'; button.style.borderRadius = '15px'; button.style.border = 'none'; button.style.background = '#e1e8ed'; button.style.cursor = 'pointer'; button.style.fontSize = '0.9rem';
+                                    button.textContent = btn.label; 
+                                    button.onclick = () => quickAction(btn.action); 
+                                    btnContainer.appendChild(button);
+                                });
+                                msgDiv.appendChild(btnContainer);
+                            }
+
+                            if (data.action === "show_card" && data.card) {
+                                const card = data.card;
+                                const cardDiv = document.createElement('div'); cardDiv.className = "action-card";
+                                let icon = card.type === "taxi" ? "🚕" : (card.type === "map" ? "🗺️" : "📌");
+                                cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
+                                msgDiv.appendChild(cardDiv);
+                            }
+                        } else {
+                            const zoneText = data.zone === "ufa_center" ? "Вы в центре Уфы" : "Вы в Уфе";
+                            addMessage(`Геолокация включена! ${zoneText}.`, 'bot'); speak(`Геолокация включена!`);
+                        }
+                    } catch (e) { console.error(e); }
+                }, (error) => { alert("Вы отклонили геолокацию."); geoBtn.style.display = 'flex'; });
+            }
         }
     </script>
 </body>
