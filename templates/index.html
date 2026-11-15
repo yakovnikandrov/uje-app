@@ -119,7 +119,8 @@
         }
         @media (min-width: 901px) {
             .sidebar { display: flex; }
-            .burger-btn { display: none; }
+            /* ✅ БУРГЕР ТЕПЕРЬ ВИДЕН ВСЕГДА */
+            .burger-btn { display: flex; } 
             .header-right { gap: 15px; }
             .weather-clock { flex-direction: row; gap: 10px; font-size: 0.95rem; }
         }
@@ -415,7 +416,12 @@
                                 if (btn.type === "url") {
                                     const a = document.createElement('a');
                                     a.className = "place-btn btn-green";
-                                    a.href = btn.action;
+                                    // ✅ БАГ 6: ИСПРАВЛЕНИЕ ДЛЯ WHATSAPP
+                                    if (btn.action.includes("wa.me")) {
+                                        a.href = btn.action.replace("https://wa.me/", "whatsapp://send?phone=");
+                                    } else {
+                                        a.href = btn.action;
+                                    }
                                     a.target = "_blank";
                                     a.textContent = btn.label;
                                     actions.appendChild(a);
