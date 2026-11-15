@@ -1,10 +1,13 @@
-# routers/chat.py
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-import asyncio, re
+import asyncio, re, random
+
 from memory import save_fact, get_all_facts, save_pending, get_pending, clear_pending, clear_all_facts
-from tools import *
+from tools import (
+    get_real_weather, get_taxi_link, get_auto_map_link, get_bus_map_link, get_walk_map_link,
+    geocode_address, RESTAURANTS, ATTRACTIONS, HOTELS, APARTMENTS, DELIVERY_PLACES, DEMO_ROUTES, DEMO_INTEREST_ROUTES, CITY_ROUTES
+)
 from responses import RESPONSES, NAME_BLACKLIST, CITY_CORES, CITY_REACTIONS
 from ai_brain import ask_uje_router, ask_gpt_free
 
@@ -14,15 +17,51 @@ class UserMessage(BaseModel):
     text: str
     history: Optional[List[Dict[str, str]]] = []
 
+# ✅ ФУНКЦИЯ ГЕНЕРАЦИИ МАРШРУТА ЧЕРЕЗ GPT
+async def generate_gpt_route(start_name: str, dest_name: str, mode: str):
+    prompt = f"Ты — заботливый гид по Уфе по имени БашГид. Турист хочет добраться от '{start_name}' до '{dest_name}' на {mode}. "
+    prompt += "Придумай правдоподобный маршрут (названия остановок, номера автобусов, ориентиры для пешеходов), как будто ты ведешь его за руку. Ответь кратко, в 3-4 предложениях, с заботой и юмором."
+    
+    try:
+        response = await asyncio.get_running_loop().run_in_executor(None, ask_gpt_free, prompt, [])
+        if response and len(response) > 10:
+            return response
+    except Exception as e:
+        print(f"GPT Error: {e}")
+    
+    if mode == "bus":
+        return f"Слушай, я не знаю точных автобусов до {dest_name}, но ты можешь дойти до ближайшей остановки и спросить у водителя. Направление точно правильное!"
+    elif mode == "walk":
+        return f"Иди прямо, никуда не сворачивай. По пути увидишь красивые места, а если заблудишься — спроси у местных, они подскажут дорогу до {dest_name}."
+    return "Маршрут не найден."
+
+# ✅ ФУНКЦИЯ ЗАБОТЫ О ПОГОДЕ
+def check_weather_care(dest_name: str):
+    outdoor_keywords = ["парк", "набережн", "ожерель", "кашкадан", "сад", "сквер"]
+    if any(word in dest_name.lower() for word in outdoor_keywords):
+        return True, "Слушай, я тут посмотрел прогноз — через пару часов погода испортится (дождь). Я бы не хотел, чтобы ты промок и заболел. Давай лучше сходим в музей (там тепло и сухо), а в парк сходим, когда солнце выглянет?"
+    return False, ""
+
 @router.post("/api/ask")
 async def ask_bot(message: UserMessage):
     user_text = message.text.strip()
     text_lower = user_text.lower()
     facts = get_all_facts()
     transport = facts.get("transport", "неизвестно")
-
+    home_addr = facts.get("home_address", "").strip()
+    visited_places = facts.get("visited_places", "")
     pending = get_pending()
     
+    # ПРИВЕТСТВИЕ
+    if user_text == "С возвращением!" or (text_lower == "привет" and facts.get("name")):
+        name = facts.get("name", "друг")
+        return {"answer": f"О, {name}! Рад снова тебя видеть! Продолжим наше путешествие? Куда хочешь сходить?", "action": "none", "buttons": [
+            {"label": "🍽 Где поесть", "action": "[food_start]"},
+            {"label": "🏛 Что посмотреть", "action": "[attr_history]"},
+            {"label": "📅 Маршрут по интересам", "action": "[route_interests_start]"}
+        ]}
+    
+    # 1. ТАКСИ
     if user_text == "[call_taxi_start]":
         save_pending("wait_taxi_address", "")
         return {"answer": "Куда поедем? Назови адрес, отель или место, и я вызову такси.", "action": "none"}
@@ -46,6 +85,7 @@ async def ask_bot(message: UserMessage):
         else:
             return {"answer": "Не могу найти такой адрес. Попробуй назвать точнее (например, 'Отель Азимут').", "action": "none"}
 
+    # 2. ВЫБОР ГИДА
     if user_text == "[select_guide:female]":
         clear_all_facts()
         save_fact("guide_gender", "female")
@@ -56,12 +96,29 @@ async def ask_bot(message: UserMessage):
         save_fact("guide_gender", "male")
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
+    # 3. ВЫБОР ТРАНСПОРТА (ПОСЛЕ КАРТОЧКИ)
+    if user_text.startswith("[route_choose:"):
+        dest_name = user_text.replace("[route_choose:", "").replace("]", "")
+        is_bad, care_text = check_weather_care(dest_name)
+        if is_bad and random.random() < 0.7:
+            return {"answer": care_text, "action": "none", "buttons": [
+                {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории Уфы]"},
+                {"label": "❌ Нет, я все равно хочу в парк", "action": f"[route:walk:{dest_name}]"}
+            ]}
+        
+        return {"answer": f"Отлично! Как поедем до {dest_name}?", "action": "none", "buttons": [
+            {"label": "🚕 Такси", "action": f"[route:taxi:{dest_name}]"},
+            {"label": "🚌 Автобус", "action": f"[route:bus:{dest_name}]"},
+            {"label": "🚶 Пешком", "action": f"[route:walk:{dest_name}]"}
+        ]}
+
+    # 4. КАРТОЧКИ (ОТЕЛИ, РЕСТОРАНЫ, МУЗЕИ)
     if user_text == "[showcase_list]":
         cards = [
-            {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
-            {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/showcase_castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
-            {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/showcase_friendship.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
-            {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]}
+            {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
+            {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/showcase_castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
+            {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/showcase_friendship.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
+            {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]}
         ]
         return {"answer": "Выбери, что тебе интересно:", "action": "show_cards", "cards": cards}
 
@@ -84,14 +141,14 @@ async def ask_bot(message: UserMessage):
             ans = "Этот белоснежный замок — один из самых фотографируемых объектов Уфы."
         
         return {"answer": ans, "action": "none", "image": f"/static/img/showcase_{key}.jpg", "buttons": [
-            {"label": "📍 Как доехать", "action": f"[route:walk:{name}]"},
+            {"label": "📍 Как доехать", "action": f"[route_choose:{name}]"},
             {"label": "📖 Другие места", "action": "[showcase_list]"}
         ]}
 
     if user_text.startswith("[map:"):
         place_name = user_text.replace("[map:", "").replace("]", "")
         return {"answer": f"Ты выбрал: {place_name}. Вот что я знаю об этом месте.", "action": "none", "buttons": [
-            {"label": "📍 Как доехать", "action": f"[route:walk:{place_name}]"},
+            {"label": "📍 Как доехать", "action": f"[route_choose:{place_name}]"},
             {"label": "📖 Подробнее", "action": f"[details_attr:history:{place_name}]"}
         ]}
 
@@ -103,21 +160,58 @@ async def ask_bot(message: UserMessage):
             for item in items:
                 if item["name"].lower() in text_lower:
                     return {"answer": f"Отличный выбор! Как поедем до {item['name']}?", "action": "none", "buttons": [
-                        {"label": "🚕 Такси", "action": f"[route:taxi:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚗 На авто", "action": f"[route:auto:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                        {"label": "🚕 Такси", "action": f"[route:taxi:{item['name']}]"},
+                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
+                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
                     ]}
 
-    if user_text.lower() in ["доехал", "доехала", "приехал", "приехала", "на месте", "пришел", "пришла", "здесь", "тут"]:
-        clear_pending()
-        return {"answer": "Отлично! Рад, что ты добрался. Теперь давай решим, чем займемся: поедим, погуляем или построим маршрут по интересам?", "action": "none", "buttons": [
-            {"label": "🍽 Где поесть", "action": "[food_start]"},
-            {"label": "🏛 Что посмотреть", "action": "[attr_history]"},
-            {"label": "📅 Маршрут по интересам", "action": "[route_interests_start]"}
-        ]}
+    # 5. ОБРАБОТКА "ГОТОВО" (ЗАВЕРШЕНИЕ МАРШРУТА И ФОТОКАРТОЧКА)
+    if user_text.lower() in ["готово", "все", "закончил", "приехал", "доехал", "пришел", "на месте"]:
+        pending = get_pending()
+        if pending and pending.get("action") == "guide_route":
+            clear_pending()
+            parts = pending.get("params").split("|")
+            place_name = parts[0]
+            # Очищаем от CITY_
+            if place_name.startswith("CITY_"):
+                _, start, end = place_name.split("_")
+                place_name = end
+            
+            current_visited = visited_places.split(",") if visited_places else []
+            if place_name not in current_visited:
+                current_visited.append(place_name)
+                save_fact("visited_places", ",".join(current_visited))
+            
+            # Ищем картинку для этого места
+            photo_url = "/static/img/showcase_salavat_flowers.jpg" # дефолт
+            for attr_key, items in ATTRACTIONS.items():
+                for item in items:
+                    if item["name"].lower() in place_name.lower() or place_name.lower() in item["name"].lower():
+                        photo_url = item["image"]
+                        break
+            if "кашкадан" in place_name.lower(): photo_url = "/static/img/showcase_salavat_flowers.jpg"
+            if "сойка" in place_name.lower(): photo_url = "/static/img/showcase_castle.jpg"
+            
+            return {
+                "answer": f"🎉 Поздравляю! Ты прошел маршрут до {place_name}!\n\n📸 Вот твоя памятная карточка. Сохрани её на карту, чтобы запомнить это место!",
+                "action": "show_photo_card",
+                "card": {
+                    "title": f"Я здесь был: {place_name}",
+                    "image": photo_url,
+                    "button": "✅ Сохранить на карту"
+                },
+                "buttons": [
+                    {"label": "🏠 На главную", "action": "[route_interests_start]"}
+                ]
+            }
+        else:
+            return {"answer": "Отлично! Ты закончил маршрут. Чем еще могу помочь?", "action": "none", "buttons": [
+                {"label": "🍽 Где поесть", "action": "[food_start]"},
+                {"label": "🏛 Что посмотреть", "action": "[attr_history]"}
+            ]}
 
-    if user_text.lower() in ["дальше", "далее", "next", "иду", "готово", "сделал"]:
+    # 6. ОБРАБОТКА "ДАЛЬШЕ" (ШАГИ)
+    if user_text.lower() in ["дальше", "далее", "next", "иду"]:
         pending = get_pending()
         if pending and pending.get("action") == "guide_route":
             parts = pending.get("params").split("|")
@@ -125,18 +219,26 @@ async def ask_bot(message: UserMessage):
             mode = parts[1]
             step_idx = int(parts[2]) + 1
             
-            route_data = DEMO_ROUTES.get(name)
+            route_data = None
+            if name.startswith("CITY_"):
+                _, start, end = name.split("_")
+                city_route = CITY_ROUTES.get((start, end))
+                if city_route:
+                    route_data = {"bus": city_route["bus"]}
+            else:
+                route_data = DEMO_ROUTES.get(name)
+
             if route_data and mode in route_data:
                 steps = route_data[mode]
                 if step_idx < len(steps):
                     save_pending("guide_route", f"{name}|{mode}|{step_idx}")
-                    return {"answer": f"Шаг {step_idx + 1}: {steps[step_idx]}\n\nНапиши 'Дальше', когда выполнишь.", "action": "none"}
+                    return {"answer": f"Шаг {step_idx + 1}: {steps[step_idx]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
                 else:
-                    clear_pending()
-                    return {"answer": f"🎉 Поздравляю! Ты на месте — {name}. Приятного отдыха! Если что, я рядом.", "action": "none"}
+                    return {"answer": f"🎉 Поздравляю! Ты на месте — {name}. Приятного отдыха!", "action": "none"}
         else:
-            return {"answer": "Я не вижу активного маршрута. Сначала выбери, куда мы идем (например, через меню «Маршрут по интересам»).", "action": "none"}
+            return {"answer": "Я не вижу активного маршрута. Сначала выбери, куда мы идем.", "action": "none"}
 
+    # 7. МАРШРУТЫ ПО ИНТЕРЕСАМ
     if user_text == "[route_interests_start]":
         return {"answer": "Отлично! Давай соберём твой идеальный день. Что тебе интереснее?", "action": "none", "buttons": [
             {"label": "🏛 История и музеи", "action": "[ri_interest:history]"},
@@ -176,7 +278,7 @@ async def ask_bot(message: UserMessage):
                 buttons.append({"label": f"📖 {name_part}", "action": step['action']})
             
             first_place_name = route['steps'][0].get('place', route['steps'][0]['text'].split('—')[1].split('(')[0].strip())
-            buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route:walk:{first_place_name}]"})
+            buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
             
             return {"answer": text, "action": "none", "buttons": buttons}
 
@@ -189,7 +291,7 @@ async def ask_bot(message: UserMessage):
             name_part = step.get('place', step['text'].split('—')[1].split('(')[0].strip())
             buttons.append({"label": f"📖 {name_part}", "action": step['action']})
         first_place_name = route['steps'][0].get('place', route['steps'][0]['text'].split('—')[1].split('(')[0].strip())
-        buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route:walk:{first_place_name}]"})
+        buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
         return {"answer": text, "action": "none", "buttons": buttons}
 
     if user_text == "[ri_force_weather]":
@@ -201,9 +303,10 @@ async def ask_bot(message: UserMessage):
             name_part = step.get('place', step['text'].split('—')[1].split('(')[0].strip())
             buttons.append({"label": f"📖 {name_part}", "action": step['action']})
         first_place_name = route['steps'][0].get('place', route['steps'][0]['text'].split('—')[1].split('(')[0].strip())
-        buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route:walk:{first_place_name}]"})
+        buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
         return {"answer": text, "action": "none", "buttons": buttons}
 
+    # 8. РЕСТОРАНЫ, ОТЕЛИ, МУЗЕИ
     if user_text.startswith("[ri_details:"):
         parts = user_text.replace("[ri_details:", "").replace("]", "").split(":", 1)
         category_key = parts[0] 
@@ -235,7 +338,7 @@ async def ask_bot(message: UserMessage):
                     buttons.append({"label": f"📖 {name_part}", "action": step['action']})
                 
                 first_place_name = route['steps'][0].get('place', route['steps'][0]['text'].split('—')[1].split('(')[0].strip())
-                buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route:walk:{first_place_name}]"})
+                buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
             
             return {"answer": answer, "action": "none", "image": item["image"], "buttons": buttons}
 
@@ -261,7 +364,7 @@ async def ask_bot(message: UserMessage):
                 "buttons": [
                     {"label": "📖 Подробнее", "action": f"[details_hotel:{item['name']}]"},
                     {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
-                    {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                    {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"}
                 ]
             })
         return {"answer": "Вот проверенные отели Уфы:", "action": "show_cards", "cards": cards, "buttons": [{"label": "🏨 Все отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры", "action": "[housing_apartments]"}]}
@@ -279,7 +382,7 @@ async def ask_bot(message: UserMessage):
                     {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
                     {"label": "💬 WhatsApp", "action": f"https://wa.me/{item['phone'].replace('+','')}", "type": "url"},
                     {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
-                    {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                    {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"}
                 ]
             })
         return {"answer": "Вот квартиры от хозяев:", "action": "show_cards", "cards": cards, "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Все квартиры", "action": "[housing_apartments]"}]}
@@ -297,7 +400,7 @@ async def ask_bot(message: UserMessage):
             return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n💰 {item['avg_check']}\n⭐ {item['rating']}", "action": "none", "image": item["image"], "buttons": [
                 {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
                 {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
-                {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"}
             ]}
 
     if user_text == "[food_start]":
@@ -323,9 +426,9 @@ async def ask_bot(message: UserMessage):
                     "image": item["image"],
                     "buttons": [
                         {"label": "📖 Подробнее", "action": f"[details_rest:{key}:{item['name']}]"},
-                        {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                        {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
+                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
+                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
                     ]
                 })
             
@@ -352,9 +455,9 @@ async def ask_bot(message: UserMessage):
                     "image": item["image"],
                     "buttons": [
                         {"label": "📖 Подробнее", "action": f"[details_attr:{key}:{item['name']}]"},
-                        {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                        {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
+                        {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
+                        {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
                     ]
                 })
             nav_buttons = [
@@ -372,9 +475,9 @@ async def ask_bot(message: UserMessage):
             taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
             action_type = "auto" if transport == "машина" else "taxi"
             return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 {item['price']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": item["image"], "buttons": [
-                {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
+                {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
+                {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
             ]}
 
     if user_text.startswith("[details_rest:"):
@@ -385,47 +488,40 @@ async def ask_bot(message: UserMessage):
             taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
             action_type = "auto" if transport == "машина" else "taxi"
             return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 Чек: {item['avg_check']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": item["image"], "buttons": [
-                {"label": taxi_label, "action": f"[route:{action_type}:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                {"label": "🚌 Автобус", "action": f"[route:bus:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"},
-                {"label": "🚶 Пешком", "action": f"[route:walk:{item['coords'][0]},{item['coords'][1]}:{item['name']}]"}
+                {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
+                {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
+                {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
             ]}
 
+    # 9. ОБРАБОТКА МАРШРУТОВ (ROUTE: TAXI/BUS/WALK)
     if user_text.startswith("[route:"):
         clear_pending()
         raw_parts = user_text.replace("[route:", "").replace("]", "").split(":", 2)
         mode = raw_parts[0]
         if len(raw_parts) == 3:
-            coords = raw_parts[1].split(",")
             name = raw_parts[2]
         elif len(raw_parts) == 2:
             name = raw_parts[1]
-            coords = None
         else:
             return {"answer": "Не понял маршрут", "action": "none"}
 
         if name == "Памятник Ленину перед Горсоветом":
-            return {"answer": "Ты уже на месте! Памятник Ленину прямо перед тобой. Осмотрись и напиши 'Дальше'.", "action": "none"}
+            return {"answer": "Ты уже на месте! Памятник Ленину прямо перед тобой. Осмотрись и нажми 'Готово'.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
         route_data = DEMO_ROUTES.get(name)
         if route_data and mode in route_data:
             steps = route_data[mode]
             save_pending("guide_route", f"{name}|{mode}|0")
-            return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {steps[0]}\n\nНапиши 'Дальше', когда выполнишь.", "action": "none"}
+            return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {steps[0]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
         if mode in ["taxi", "auto"]:
             loc_str = facts.get("current_location", "")
             if not loc_str:
-                if coords:
-                    save_pending("wait_geo", f"{coords[0]},{coords[1]}:{name}")
-                else:
-                    save_pending("wait_geo", name)
+                save_pending("wait_geo", name)
                 return {"answer": f"Чтобы построить маршрут до {name}, нажми на компас 🧭", "action": "none"}
             
             start_lat, start_lon = map(float, loc_str.split(','))
-            if coords:
-                end_lat, end_lon = float(coords[0]), float(coords[1])
-            else:
-                end_lat, end_lon = geocode_address(name + ", Уфа")
+            end_lat, end_lon = geocode_address(name + ", Уфа")
 
             if end_lat:
                 if transport == "машина" or mode == "auto":
@@ -437,148 +533,36 @@ async def ask_bot(message: UserMessage):
             return {"answer": "Не могу найти адрес.", "action": "none"}
 
         else: 
-            loc_str = facts.get("current_location", "")
-            if not loc_str:
-                if coords:
-                    save_pending("wait_geo", f"{coords[0]},{coords[1]}:{name}")
-                else:
-                    save_pending("wait_geo", name)
-                return {"answer": "Сначала нажми на компас 🧭, чтобы я знал, откуда ехать.", "action": "none"}
+            start_name = home_addr if home_addr else "Текущее местоположение"
+            found_route = None
+            route_id = None
+            for (start, end), route_data in CITY_ROUTES.items():
+                if start.lower() in start_name.lower() and end.lower() in name.lower():
+                    found_route = route_data["bus"]
+                    route_id = f"CITY_{start}_{end}"
+                    break
             
-            start_lat, start_lon = map(float, loc_str.split(','))
-            if coords:
-                end_lat, end_lon = float(coords[0]), float(coords[1])
-            else:
-                end_lat, end_lon = geocode_address(name + ", Уфа")
+            if found_route:
+                save_pending("guide_route", f"{route_id}|bus|0")
+                return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {found_route[0]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
-            if end_lat:
-                if mode == "bus":
-                    url = get_bus_map_link(start_lat, start_lon, end_lat, end_lon)
-                    title = "🚌 Общественный транспорт"
-                else:
-                    url = get_walk_map_link(start_lat, start_lon, end_lat, end_lon)
-                    title = "🚶 Пешеходный маршрут"
-                    
-                return {"answer": f"Маршрут до {name} построен. Открывай Яндекс.Карты.", "action": "show_card", "card": {"type": "map", "title": title, "text": name, "button": "Открыть Карты", "url": url}}
-            return {"answer": "Не могу найти адрес.", "action": "none"}
+            gpt_text = await generate_gpt_route(start_name, name, "автобусе" if mode == "bus" else "пешком")
+            # ✅ ЗАПОМИНАЕМ МЕСТО, ЧТОБЫ ВЫДАТЬ ФОТОКАРТОЧКУ ПРИ "ГОТОВО"
+            save_pending("guide_route", f"{name}|{mode}|0")
+            return {"answer": gpt_text, "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
     if user_text.startswith("[transport:"):
         parts = user_text.replace("[transport:", "").replace("]", "").split(":", 1)
         mode = parts[0]
         name = parts[1] if len(parts) > 1 else "Место"
         
-        end_lat, end_lon = geocode_address(name + ", Уфа")
-        
-        if mode in ["taxi", "auto"] and end_lat:
-            loc_str = facts.get("current_location", "")
-            if not loc_str:
-                save_pending("wait_geo", f"{end_lat},{end_lon}:{name}")
-                return {"answer": f"Чтобы построить маршрут до {name}, нажми на компас 🧭", "action": "none"}
-            start_lat, start_lon = map(float, loc_str.split(','))
-            
-            if transport == "машина" or mode == "auto":
-                url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
-                return {"answer": f"Автомаршрут до {name} построен.", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": name, "button": "Открыть Карты", "url": url}}
-            else:
-                url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-                return {"answer": f"Маршрут до {name} построен.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": name, "button": "Открыть Яндекс Go", "url": url}}
-        
-        elif mode == "bus":
-            route_data = DEMO_ROUTES.get(name)
-            if route_data and "bus" in route_data:
-                steps = route_data["bus"]
-                save_pending("guide_route", f"{name}|bus|0")
-                return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {steps[0]}\n\nНапиши 'Дальше', когда выполнишь.", "action": "none"}
-            else:
-                if end_lat:
-                    loc_str = facts.get("current_location", "")
-                    if not loc_str:
-                        save_pending("wait_geo", f"{end_lat},{end_lon}:{name}")
-                        return {"answer": f"Чтобы построить маршрут до {name}, нажми на компас 🧭", "action": "none"}
-                    start_lat, start_lon = map(float, loc_str.split(','))
-                    url = get_bus_map_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Маршрут на автобусе до {name} построен. Открывай Яндекс.Карты.", "action": "show_card", "card": {"type": "map", "title": "🚌 Общественный транспорт", "text": name, "button": "Открыть Карты", "url": url}}
-                return {"answer": "Не могу найти адрес. Попробуй иначе.", "action": "none"}
-        
-        elif mode == "walk":
-            route_data = DEMO_ROUTES.get(name)
-            if route_data and "walk" in route_data:
-                steps = route_data["walk"]
-                save_pending("guide_route", f"{name}|walk|0")
-                return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {steps[0]}\n\nНапиши 'Дальше', когда выполнишь.", "action": "none"}
-            else:
-                if end_lat:
-                    loc_str = facts.get("current_location", "")
-                    if not loc_str:
-                        save_pending("wait_geo", f"{end_lat},{end_lon}:{name}")
-                        return {"answer": f"Чтобы построить маршрут до {name}, нажми на компас 🧭", "action": "none"}
-                    start_lat, start_lon = map(float, loc_str.split(','))
-                    url = get_walk_map_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Пешеходный маршрут до {name} построен. Открывай Яндекс.Карты.", "action": "show_card", "card": {"type": "map", "title": "🚶 Пешком", "text": name, "button": "Открыть Карты", "url": url}}
-                return {"answer": "Не могу найти адрес. Попробуй иначе.", "action": "none"}
+        return {"answer": f"Отлично! Как поедем до {name}?", "action": "none", "buttons": [
+            {"label": "🚕 Такси", "action": f"[route:taxi:{name}]"},
+            {"label": "🚌 Автобус", "action": f"[route:bus:{name}]"},
+            {"label": "🚶 Пешком", "action": f"[route:walk:{name}]"}
+        ]}
 
-    pending = get_pending()
-    if pending and pending.get("action") == "wait_transport_choice":
-        dest_data = pending.get("params")
-        if ":" in dest_data:
-            coords_str, dest_name = dest_data.split(":", 1)
-        else:
-            coords_str = None
-            dest_name = dest_data
-
-        mode = None
-        if any(w in text_lower for w in ["такси", "машин", "авто", "го"]):
-            mode = "auto" if transport == "машина" else "taxi"
-        elif any(w in text_lower for w in ["автобус", "обществен", "маршрутк"]):
-            mode = "bus"
-        elif any(w in text_lower for w in ["пеш", "ногах", "идти", "пройти"]):
-            mode = "walk"
-
-        if mode:
-            clear_pending()
-            loc_str = facts.get("current_location", "")
-            if not loc_str: return {"answer": "Нажми на компас 🧭", "action": "none"}
-            
-            start_lat, start_lon = map(float, loc_str.split(','))
-            if coords_str:
-                end_lat, end_lon = map(float, coords_str.split(','))
-            else:
-                end_lat, end_lon = geocode_address(dest_name + ", Уфа")
-
-            if mode in ["taxi", "auto"]:
-                if mode == "auto" or transport == "машина":
-                    url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Автомаршрут до {dest_name} построен.", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": dest_name, "button": "Открыть Карты", "url": url}}
-                else:
-                    url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Маршрут до {dest_name} построен.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest_name, "button": "Открыть Яндекс Go", "url": url}}
-            elif mode == "bus":
-                url = get_bus_map_link(start_lat, start_lon, end_lat, end_lon)
-                return {"answer": f"Маршрут на автобусе до {dest_name} построен.", "action": "show_card", "card": {"type": "map", "title": "🚌 Общественный транспорт", "text": dest_name, "button": "Открыть Карты", "url": url}}
-            elif mode == "walk":
-                url = get_walk_map_link(start_lat, start_lon, end_lat, end_lon)
-                return {"answer": f"Пешеходный маршрут до {dest_name} построен.", "action": "show_card", "card": {"type": "map", "title": "🚶 Пешком", "text": dest_name, "button": "Открыть Карты", "url": url}}
-        else:
-            btns = []
-            if coords_str:
-                btns = [
-                    {"label": "🚕 Такси", "action": f"[route:taxi:{coords_str}:{dest_name}]"},
-                    {"label": "🚗 На авто", "action": f"[route:auto:{coords_str}:{dest_name}]"},
-                    {"label": "🚌 Автобус", "action": f"[route:bus:{coords_str}:{dest_name}]"},
-                    {"label": "🚶 Пешком", "action": f"[route:walk:{coords_str}:{dest_name}]"}
-                ]
-            return {"answer": "Слушай, я не понял, как ты хочешь поехать. Выбери кнопку ниже или напиши 'такси', 'автобус' или 'пешком'.", "action": "none", "buttons": btns}
-
-    if "home_address" in facts:
-        if any(word in text_lower for word in ["поесть", "голоден", "ресторан", "кафе", "перекусить", "хочу есть", "кушать", "еда"]):
-            return {"answer": "Кушать подано! Что тебе сейчас по душе?", "action": "none", "buttons": [{"label": "🥘 Национальная", "action": "[cat_national]"}, {"label": "☕ Кофе", "action": "[cat_coffee]"}, {"label": "🍔 Бюджетно", "action": "[cat_budget]"}, {"label": "🍷 Премиум", "action": "[cat_premium]"}, {"label": "👨‍👩‍👧‍👦 С детьми", "action": "[cat_kids]"}]}
-
-        if any(word in text_lower for word in ["жить", "жилье", "жильё", "гостиниц", "отель", "квартир", "снять", "переночевать", "устал", "где поспать", "где остановиться"]):
-            return {"answer": "Понял, тебе нужно жильё. Вот варианты:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
-
-        if any(word in text_lower for word in ["экскурси", "что посмотреть", "куда сходить", "куда съездить", "где погулять", "достопримечательности", "что есть в уфе", "чем заняться", "что еще", "расскажи про уфу", "хочу посмотреть"]):
-            return {"answer": "У нас тут есть всё! А что тебе сейчас больше по душе?", "action": "none", "buttons": [{"label": "🏛 История и музеи", "action": "[attr_history]"}, {"label": "🌳 Природа и парки", "action": "[attr_nature]"}, {"label": "🐎 Символы города", "action": "[attr_symbols]"}]}
-
+    # 10. ОНБОРДИНГ
     if "name" not in facts or facts.get("name") == "":
         words = re.findall(r'\b[А-Яа-яЁё]{2,}\b', user_text)
         stop_words = ["меня", "зовут", "зови", "это", "ну", "привет", "здравствуйте", "добрый", "день", "вечер", "утро"]
@@ -665,7 +649,11 @@ async def ask_bot(message: UserMessage):
                 return {"answer": "Запомнила адрес, но не вижу тебя. Нажми на компас 🧭!", "action": "none"}
         else:
             save_pending("wait_transport_choice", clean_address)
-            return {"answer": f"Отлично, запомнила: {clean_address}. {care_msg} А на чем поедем до отеля?", "action": "none", "buttons": [{"label": "🚕 Такси", "action": f"[transport:taxi:{clean_address}]"}, {"label": "🚌 Автобус", "action": f"[transport:bus:{clean_address}]"}, {"label": "🚶 Пешком", "action": f"[transport:walk:{clean_address}]"}]}
+            return {"answer": f"Отлично, запомнила: {clean_address}. {care_msg} Как поедем до отеля?", "action": "none", "buttons": [
+                {"label": "🚕 Такси", "action": f"[route:taxi:{clean_address}]"},
+                {"label": "🚌 Автобус", "action": f"[route:bus:{clean_address}]"},
+                {"label": "🚶 Пешком", "action": f"[route:walk:{clean_address}]"}
+            ]}
 
     if any(word in text_lower for word in ["домой", "дом", "обратно", "в отель"]):
         loc_str = facts.get("current_location", "")
@@ -674,15 +662,11 @@ async def ask_bot(message: UserMessage):
             return {"answer": "Я не знаю, где ты. Нажми на компас 🧭, чтобы я нашла тебя.", "action": "none"}
         saved_addr = facts.get("home_address")
         if saved_addr:
-            start_lat, start_lon = map(float, loc_str.split(','))
-            end_lat, end_lon = geocode_address(saved_addr + ", Уфа")
-            if end_lat:
-                if transport == "машина":
-                    url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Автомаршрут до дома построен.", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": saved_addr, "button": "Открыть Карты", "url": url}}
-                else:
-                    url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Маршрут до дома построен. Кстати, голодны? Могу заказать доставку прямо к двери.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": saved_addr, "button": "Открыть Яндекс Go", "url": url}, "buttons": [{"label": "🍕 Заказать доставку", "action": "[delivery_start]"}]}
+            return {"answer": f"Отлично, едем до {saved_addr}. Как поедем?", "action": "none", "buttons": [
+                {"label": "🚕 Такси", "action": f"[route:taxi:{saved_addr}]"},
+                {"label": "🚌 Автобус", "action": f"[route:bus:{saved_addr}]"},
+                {"label": "🚶 Пешком", "action": f"[route:walk:{saved_addr}]"}
+            ]}
         save_pending("ask_home_address", "")
         return {"answer": "А где ты остановился? Назови отель или точный адрес.", "action": "none"}
 
@@ -690,41 +674,17 @@ async def ask_bot(message: UserMessage):
     if pending and pending.get("action") == "ask_home_address":
         clear_pending()
         save_fact("home_address", user_text)
-        loc_str = facts.get("current_location", "")
-        if loc_str:
-            start_lat, start_lon = map(float, loc_str.split(','))
-            end_lat, end_lon = geocode_address(user_text + ", Уфа")
-            if end_lat:
-                if transport == "машина":
-                    url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Отлично, запомнила: {user_text}. Автомаршрут построен!", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": user_text, "button": "Открыть Карты", "url": url}}
-                else:
-                    url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-                    return {"answer": f"Отлично, запомнила: {user_text}. Маршрут построен!", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": user_text, "button": "Открыть Яндекс Go", "url": url}}
-        return {"answer": "Адрес записала, но я не вижу, где ты. Нажми на компас 🧭!", "action": "none"}
+        return {"answer": f"Отлично, запомнила: {user_text}. Как поедем туда?", "action": "none", "buttons": [
+            {"label": "🚕 Такси", "action": f"[route:taxi:{user_text}]"},
+            {"label": "🚌 Автобус", "action": f"[route:bus:{user_text}]"},
+            {"label": "🚶 Пешком", "action": f"[route:walk:{user_text}]"}
+        ]}
 
+    # 11. ЗАПАСНОЙ ВАРИАНТ (YANDEX GPT)
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(None, ask_uje_router, user_text, facts, message.history)
         for k, v in intent.get("new_facts", {}).items(): save_fact(k, v)
-        
-        if intent.get("action") == "call_taxi":
-            dest = intent.get("params", {}).get("destination", "").strip()
-            if dest:
-                loc_str = facts.get("current_location", "")
-                if not loc_str: 
-                    save_pending("wait_geo", dest)
-                    return {"answer": "Сначала нажми на компас 🧭, чтобы я знала, откуда ехать.", "action": "none"}
-                start_lat, start_lon = map(float, loc_str.split(','))
-                end_lat, end_lon = geocode_address(dest + ", Башкортостан")
-                if end_lat:
-                    if transport == "машина":
-                        url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
-                        return {"answer": f"Автомаршрут построен: {dest}.", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": dest, "button": "Открыть Карты", "url": url}}
-                    else:
-                        url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
-                        return {"answer": f"Маршрут построен: {dest}.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": dest, "button": "Открыть Яндекс Go", "url": url}}
-            return {"answer": "Куда едем?", "action": "none"}
         
         reply_text = intent.get("params", {}).get("reply", "").strip()
         if not reply_text:

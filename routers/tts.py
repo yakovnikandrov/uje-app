@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Response
 from pydantic import BaseModel
 import re, os, requests
+from dotenv import load_dotenv
+load_dotenv()
 from memory import get_all_facts
 
 router = APIRouter()
@@ -22,7 +24,7 @@ async def text_to_speech(req: TTSRequest):
     
     try:
         res = requests.post(
-            "https://tts.api.yandex.net/speech/v1/tts:synthesize", 
+            "https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize", 
             headers={"Authorization": f"Api-Key {api_key}"}, 
             data={"text": clean_text[:1000], "lang": "ru-RU", "voice": voice, "folderId": folder_id, "format": "mp3", "speed": "1.0"}, 
             timeout=10
