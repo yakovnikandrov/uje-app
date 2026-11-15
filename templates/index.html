@@ -106,7 +106,6 @@
         .photo-card-title { font-size: 1.1rem; font-weight: bold; color: #166b43; margin-bottom: 10px; }
         .photo-card-btn { background: #166b43; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; font-size: 1rem; }
 
-        /* ✅ Стили для модального окна юр. инфо */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: none; justify-content: center; align-items: center; padding: 20px; }
         .modal-content { background: #fff; padding: 20px; border-radius: 15px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; }
         .modal-content h2 { color: #166b43; margin-bottom: 10px; font-size: 1.2rem; }
@@ -117,7 +116,7 @@
             .sidebar { display: none !important; }
             .header { padding: 5px 10px; min-height: 60px; }
             .logo { font-size: 1.1rem; }
-            .header-emblem { height: 40px; }
+            .header-emblem { height: 45px; }
             #guide-avatar { width: 32px; height: 32px; }
             
             .guide-selection { gap: 15px; }
@@ -163,15 +162,12 @@
         
         <div style="border-top: 1px solid #e1e8ed; margin: 10px 0;"></div>
         
-        <!-- ✅ ЗАМЕНИЛИ ПРИКРЕПИТЬ ФАЙЛ НА АУДИОГИД -->
         <button class="menu-btn" onclick="menuAction('startAudioGuide()')" style="background: #e8f5e9; border-color: #166b43;">🎧 Аудиогид</button>
-        
         <button class="menu-btn" onclick="menuAction('toggleVoice()')" id="menuVoiceBtn">🔊 Звук: Вкл</button>
         <button class="menu-btn" onclick="menuAction('quickAction(\'[showcase_list]\')')">🖼️ Достопримечательности</button>
         
         <div style="border-top: 1px solid #e1e8ed; margin: 10px 0;"></div>
         
-        <!-- ✅ ЮРИДИЧЕСКАЯ ИНФОРМАЦИЯ -->
         <button class="menu-btn" onclick="menuAction('openLegalModal()')" style="font-size: 0.9rem; background: #fff; border: 1px dashed #ccc;">📜 Юридическая информация</button>
 
         <button class="menu-btn close-btn" onclick="toggleMenu()">✖ Закрыть меню</button>
@@ -182,11 +178,11 @@
     <div class="app-layout">
         <div class="sidebar" id="sidebar-left">
             <div class="showcase-card" onclick="quickAction('[showcase:salavat_flowers]')">
-                <img src="/static/img/showcase_salavat_flowers.jpg" class="showcase-img" alt="Салават Юлаев">
+                <img src="/static/img/salavat.jpg" class="showcase-img" alt="Салават Юлаев">
                 <div class="showcase-title">🐎 Салават Юлаев</div>
             </div>
             <div class="showcase-card" onclick="quickAction('[showcase:friendship]')">
-                <img src="/static/img/showcase_friendship.jpg" class="showcase-img" alt="Монумент Дружбы">
+                <img src="/static/img/monument.jpg" class="showcase-img" alt="Монумент Дружбы">
                 <div class="showcase-title">🏛 Монумент Дружбы</div>
             </div>
         </div>
@@ -208,11 +204,11 @@
 
         <div class="sidebar" id="sidebar-right">
             <div class="showcase-card" onclick="quickAction('[showcase:castle]')">
-                <img src="/static/img/showcase_castle.jpg" class="showcase-img" alt="Замок">
+                <img src="/static/img/castle.jpg" class="showcase-img" alt="Замок">
                 <div class="showcase-title">🏰 Белый Замок</div>
             </div>
             <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
-                <img src="/static/img/showcase_salavat_close.jpg" class="showcase-img" alt="Салават">
+                <img src="/static/img/salavat.jpg" class="showcase-img" alt="Салават">
                 <div class="showcase-title">🐎 Салават</div>
             </div>
         </div>
@@ -220,7 +216,6 @@
         <div id="map-container"><button class="close-map-btn" onclick="toggleMap()">✖ Закрыть карту</button><div id="map"></div></div>
     </div>
 
-    <!-- ✅ МОДАЛЬНОЕ ОКНО ДЛЯ ЮРИДИЧЕСКИХ ДОКУМЕНТОВ -->
     <div class="modal-overlay" id="legalModal">
         <div class="modal-content">
             <h2>Политика конфиденциальности</h2>
@@ -242,7 +237,6 @@
         let chatHistory = [], map, mapInitialized = false, pendingVoiceText = null, hasInteracted = false;
         let isProcessing = false;
         
-        // ✅ ХРАНИМ МЕСТА ДЛЯ ФЛАЖКОВ
         let visitedMarkers = JSON.parse(localStorage.getItem('visitedMarkers') || '[]');
         let allMapPoints = [];
 
@@ -255,7 +249,6 @@
             setTimeout(() => { eval(actionStr); }, 300);
         }
 
-        // ✅ ЗАГЛУШКА АУДИОГИДА
         function startAudioGuide() {
             if (isProcessing) return;
             addMessage("🎧 Включаю режим аудиогида...", 'bot');
@@ -266,28 +259,20 @@
             }, 1500);
         }
 
-        // ✅ МОДАЛЬНОЕ ОКНО ЮР. ИНФО
-        function openLegalModal() {
-            document.getElementById('legalModal').style.display = 'flex';
-        }
-        function closeLegalModal() {
-            document.getElementById('legalModal').style.display = 'none';
-        }
+        function openLegalModal() { document.getElementById('legalModal').style.display = 'flex'; }
+        function closeLegalModal() { document.getElementById('legalModal').style.display = 'none'; }
 
         function startMic(e) {
             if (e) e.preventDefault(); 
             if (!recognition) return alert("Браузер не поддерживает голосовой ввод.");
             if (isProcessing) return;
-            
             userInputField.value = ""; 
             try { recognition.start(); } catch(err) {}
         }
 
         function stopMic(e) {
             if (e) e.preventDefault();
-            if (isListening && recognition) {
-                recognition.stop();
-            }
+            if (isListening && recognition) { recognition.stop(); }
         }
 
         function showAvatar() {
@@ -309,10 +294,8 @@
         async function speak(text) {
             if (!isVoiceEnabled) return;
             if (isListening && recognition) recognition.stop(); 
-            
             const cleanText = text.replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[*#_~`®©]/g, '').replace(/\s+/g, ' ').trim();
             if (!cleanText) return;
-            
             showAvatar();
             try {
                 const res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: cleanText }) });
@@ -339,13 +322,7 @@
             recognition.lang = 'ru-RU'; 
             recognition.continuous = true; 
             recognition.interimResults = true;
-            
-            recognition.onstart = () => { 
-                isListening = true; 
-                document.getElementById('micBtn').classList.add('listening'); 
-                userInputField.placeholder = "Говорите..."; 
-            };
-            
+            recognition.onstart = () => { isListening = true; document.getElementById('micBtn').classList.add('listening'); userInputField.placeholder = "Говорите..."; };
             recognition.onresult = (event) => {
                 let final = '', interim = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) { 
@@ -356,17 +333,10 @@
                 userInputField.style.height = 'auto'; 
                 userInputField.style.height = userInputField.scrollHeight + 'px';
             };
-            
-            recognition.onend = () => { 
-                isListening = false; 
-                document.getElementById('micBtn').classList.remove('listening'); 
-                userInputField.placeholder = "Напиши или зажми микрофон..."; 
-            };
-            
+            recognition.onend = () => { isListening = false; document.getElementById('micBtn').classList.remove('listening'); userInputField.placeholder = "Напиши или зажми микрофон..."; };
             recognition.onerror = (event) => { 
                 if (event.error === 'not-allowed') alert("Доступ к микрофону запрещен."); 
-                isListening = false; 
-                document.getElementById('micBtn').classList.remove('listening'); 
+                isListening = false; document.getElementById('micBtn').classList.remove('listening'); 
             };
         }
 
@@ -412,27 +382,22 @@
                 else if (data.action === "select_guide") {
                     const msgId = addMessage(data.answer, 'bot');
                     const msgDiv = document.getElementById(msgId);
-                    
                     const selectDiv = document.createElement('div');
                     selectDiv.className = "guide-selection";
-                    
                     const girlCard = document.createElement('div');
                     girlCard.className = "guide-card";
                     girlCard.onclick = () => quickAction('[select_guide:female]');
                     girlCard.innerHTML = `<img src="/static/img/guide_female.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Айгуль'"><div class="guide-name">Айгуль</div>`;
-                    
                     const manCard = document.createElement('div');
                     manCard.className = "guide-card";
                     manCard.onclick = () => quickAction('[select_guide:male]');
                     manCard.innerHTML = `<img src="/static/img/guide_male.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Ильдар'"><div class="guide-name">Ильдар</div>`;
-
                     selectDiv.appendChild(girlCard);
                     selectDiv.appendChild(manCard);
                     msgDiv.appendChild(selectDiv);
                 }
                 else if (data.action === "show_photo_card") {
                     addMessage(data.answer, 'bot'); 
-                    
                     const msgId = addMessage('', 'bot');
                     const msgDiv = document.getElementById(msgId);
                     msgDiv.style.padding = '0'; msgDiv.style.background = 'transparent'; msgDiv.style.boxShadow = 'none'; msgDiv.style.border = 'none'; msgDiv.style.maxWidth = '85%';
@@ -468,9 +433,7 @@
                 }
                 else if (data.action === "show_cards" && data.cards) {
                     addMessage(data.answer, 'bot'); 
-                    
                     let firstCardDiv = null;
-
                     data.cards.forEach((card, index) => {
                         const cardMsgId = addMessage('', 'bot');
                         const msgDiv = document.getElementById(cardMsgId);
@@ -511,27 +474,15 @@
                                 }
                             });
                         }
-
                         cardDiv.appendChild(img);
                         cardDiv.appendChild(content);
                         msgDiv.appendChild(cardDiv);
-
                         if (index === 0) firstCardDiv = msgDiv;
                     });
-
-                    if (firstCardDiv) {
-                        setTimeout(() => {
-                            firstCardDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 100);
-                    }
-
+                    if (firstCardDiv) { setTimeout(() => { firstCardDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100); }
                     if (data.buttons && data.buttons.length > 0) {
                         const navContainer = document.createElement('div');
-                        navContainer.style.marginTop = '10px';
-                        navContainer.style.display = 'flex';
-                        navContainer.style.flexWrap = 'wrap';
-                        navContainer.style.gap = '8px';
-                        
+                        navContainer.style.marginTop = '10px'; navContainer.style.display = 'flex'; navContainer.style.flexWrap = 'wrap'; navContainer.style.gap = '8px';
                         data.buttons.forEach(btn => {
                             const button = document.createElement('button');
                             button.className = 'quick-btn';
@@ -540,10 +491,8 @@
                             button.onclick = () => quickAction(btn.action);
                             navContainer.appendChild(button);
                         });
-                        const chatContainer = document.getElementById('chat-container');
-                        chatContainer.appendChild(navContainer);
+                        document.getElementById('chat-container').appendChild(navContainer);
                     }
-
                 } else if (data.action === "speak_only") {
                     speak(data.answer);
                 } else {
@@ -578,7 +527,6 @@
                         cardDiv.innerHTML = `<div class="action-card-header"><span style="font-size:1.5rem;">${icon}</span><div><div class="action-card-title">${card.title}</div><div class="action-card-text">${card.text}</div></div></div><a href="${card.url}" target="_blank" class="action-card-btn">${card.button}</a>`;
                         msgDiv.appendChild(cardDiv);
                     }
-                    
                     if (data.answer.includes("компас") || data.answer.includes("координат")) {
                         document.getElementById('geoBtn').style.display = 'flex';
                     }
@@ -597,50 +545,35 @@
             const container = document.getElementById('chat-container'); 
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${sender}`;
-            
             let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
             formattedText = formattedText.replace(/\n/g, '<br>');
             msgDiv.innerHTML = formattedText; 
-            
             const id = 'msg-' + Date.now() + Math.floor(Math.random() * 100); msgDiv.id = id;
             container.appendChild(msgDiv); container.scrollTop = container.scrollHeight; return id;
         }
 
         function saveMarker(title) {
             const cleanTitle = title.replace("Я здесь был: ", "").trim();
-            
             let foundPoint = null;
             if (allMapPoints && allMapPoints.length > 0) {
                 foundPoint = allMapPoints.find(p => p.name.toLowerCase().includes(cleanTitle.toLowerCase()));
             }
-            
             let markerData = { title: cleanTitle, lat: 54.7275, lon: 55.9480 };
-            if (foundPoint) {
-                markerData = { title: cleanTitle, lat: foundPoint.lat, lon: foundPoint.lon };
-            }
-
+            if (foundPoint) { markerData = { title: cleanTitle, lat: foundPoint.lat, lon: foundPoint.lon }; }
             if (!visitedMarkers.some(m => m.title === cleanTitle)) {
                 visitedMarkers.push(markerData);
                 localStorage.setItem('visitedMarkers', JSON.stringify(visitedMarkers));
             }
-            
             alert(`✅ Место "${cleanTitle}" сохранено на карте!`);
-            
-            if (map) {
-                renderVisitedMarkers();
-            }
-            
+            if (map) { renderVisitedMarkers(); }
             toggleMenu();
             setTimeout(() => { toggleMap(); }, 300);
         }
 
         function renderVisitedMarkers() {
             if (!map) return;
-            if (window.markersLayer) {
-                map.removeLayer(window.markersLayer);
-            }
+            if (window.markersLayer) { map.removeLayer(window.markersLayer); }
             window.markersLayer = L.layerGroup().addTo(map);
-            
             visitedMarkers.forEach(m => {
                 const flagIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="font-size: 30px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5));">✅</div>`, iconSize: [30, 30], iconAnchor: [15, 30] });
                 L.marker([m.lat, m.lon], {icon: flagIcon}).addTo(window.markersLayer).bindPopup(`<b style="color: #166b43; font-size: 14px;">✅ Я здесь был: ${m.title}</b>`);
@@ -653,11 +586,7 @@
                 c.style.display = 'none'; 
             } else { 
                 c.style.display = 'flex'; 
-                if (!mapInitialized) {
-                    initMap(); 
-                } else {
-                    setTimeout(() => { if(map) { map.invalidateSize(); renderVisitedMarkers(); } }, 200);
-                }
+                if (!mapInitialized) { initMap(); } else { setTimeout(() => { if(map) { map.invalidateSize(); renderVisitedMarkers(); } }, 200); }
             } 
         }
 
@@ -667,7 +596,6 @@
             try {
                 const data = await (await fetch('/api/map_points')).json();
                 allMapPoints = data.points; 
-                
                 data.points.forEach(p => {
                     let iconHtml = p.emoji;
                     if (p.type === 'food') iconHtml = '🍽️';
@@ -676,7 +604,6 @@
                     const icon = L.divIcon({ className: 'custom-div-icon', html: `<div style="font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${iconHtml}</div>`, iconSize: [30, 30], iconAnchor: [15, 30] });
                     L.marker([p.lat, p.lon], {icon: icon}).addTo(map).bindPopup(`<b style="color: #166b43; font-size: 14px;">${p.name}</b><br><button class="map-popup-btn" onclick="mapAction('${p.name}')">Хочу сюда 🚕</button>`);
                 });
-                
                 renderVisitedMarkers();
                 mapInitialized = true;
             } catch (e) { console.error(e); }
@@ -695,28 +622,23 @@
         async function initApp() {
             const gender = localStorage.getItem('guide_gender') || 'female';
             setGuideAvatar(gender);
-
             try {
                 const data = await (await fetch('/api/status')).json();
                 if (data.is_new) { 
                     const msgId = addMessage(data.greeting, 'bot'); 
                     pendingVoiceText = data.greeting;
-                    
                     if (data.action === "select_guide") {
                         const msgDiv = document.getElementById(msgId);
                         const selectDiv = document.createElement('div');
                         selectDiv.className = "guide-selection";
-                        
                         const girlCard = document.createElement('div');
                         girlCard.className = "guide-card";
                         girlCard.onclick = () => quickAction('[select_guide:female]');
                         girlCard.innerHTML = `<img src="/static/img/guide_female.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Айгуль'"><div class="guide-name">Айгуль</div>`;
-                        
                         const manCard = document.createElement('div');
                         manCard.className = "guide-card";
                         manCard.onclick = () => quickAction('[select_guide:male]');
                         manCard.innerHTML = `<img src="/static/img/guide_male.jpg" class="guide-img" onerror="this.src='https://placehold.co/300x400/eeeeee/333333?text=Ильдар'"><div class="guide-name">Ильдар</div>`;
-
                         selectDiv.appendChild(girlCard);
                         selectDiv.appendChild(manCard);
                         msgDiv.appendChild(selectDiv);
@@ -751,7 +673,6 @@
                         if (data.answer) {
                             const msgId = addMessage(data.answer, 'bot'); speak(data.answer);
                             const msgDiv = document.getElementById(msgId);
-
                             if (data.buttons && data.buttons.length > 0) {
                                 const btnContainer = document.createElement('div');
                                 btnContainer.style.marginTop = '10px'; btnContainer.style.display = 'flex'; btnContainer.style.flexWrap = 'wrap'; btnContainer.style.gap = '8px';
@@ -765,7 +686,6 @@
                                 });
                                 msgDiv.appendChild(btnContainer);
                             }
-
                             if (data.action === "show_card" && data.card) {
                                 const card = data.card;
                                 const cardDiv = document.createElement('div'); cardDiv.className = "action-card";
