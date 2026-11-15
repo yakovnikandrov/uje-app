@@ -20,7 +20,7 @@ from responses import RESPONSES, FACT_LABELS, DEFAULT_QUICK_ACTIONS, NAME_BLACKL
 import docx, PyPDF2, pandas as pd
 load_dotenv()
 
-ASSET_VERSION = "9.0"
+ASSET_VERSION = "9.2"
 
 MAP_POIS = [
     {"name": "Отель Азимут", "lat": 54.7431, "lon": 55.9721, "type": "hotel", "emoji": "🏨"},
@@ -183,6 +183,10 @@ async def ask_bot(message: UserMessage):
     text_lower = user_text.lower()
     facts = get_all_facts()
     transport = facts.get("transport", "неизвестно")
+
+    # ✅ ОБРАБОТЧИК КНОПКИ ТАКСИ ИЗ МЕНЮ
+    if user_text == "[call_taxi_start]":
+        return {"answer": "Куда поедем? Назови адрес, отель или место, и я вызову такси.", "action": "none"}
 
     if user_text == "[select_guide:female]":
         clear_all_facts()
@@ -710,12 +714,11 @@ async def ask_bot(message: UserMessage):
 
     # ✅ ОНБОРДИНГ (ТЕПЕРЬ В САМОМ НИЗУ)
     if "name" not in facts or facts.get("name") == "":
-        # Берем последнее слово из фразы (например, из "Ну Яков" берем "Яков")
         words = [w for w in user_text.split() if w.lower() not in ["ну", "эм", "а", "и", "меня", "зовут", "зови", "я"]]
         if not words:
             return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
         
-        name = words[-1].capitalize() # Берем последнее слово
+        name = words[-1].capitalize()
         
         if len(name) <= 30 and name.lower() not in NAME_BLACKLIST:
             save_fact("name", name)
@@ -747,7 +750,6 @@ async def ask_bot(message: UserMessage):
              return {"answer": "Слушай, а откуда ты к нам приехал? Назови город.", "action": "none"}
 
     if "transport" not in facts:
-        # Более умное распознавание транспорта
         new_transport = None
         if any(w in text_lower for w in ["поезд", "жд", "вокзал", "железн"]): new_transport = "поезд"
         elif any(w in text_lower for w in ["самолет", "аэропорт", "прилетел", "летел"]): new_transport = "самолет"
