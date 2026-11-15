@@ -194,7 +194,7 @@ async def ask_bot(message: UserMessage):
         save_fact("guide_gender", "male")
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
-    # ✅ ТРИГГЕРЫ ПОДНЯТЫ НАВЕРХ
+    # ✅ ТРИГГЕРЫ ПОДНЯТЫ НАВЕРХ (ЧТОБЫ РАБОТАЛИ БЕЗ ОНБОРДИНГА)
     if any(word in text_lower for word in ["поесть", "голоден", "ресторан", "кафе", "перекусить", "хочу есть", "кушать", "еда"]):
         return {"answer": "Кушать подано! Что тебе сейчас по душе?", "action": "none", "buttons": [{"label": "🥘 Национальная", "action": "[cat_national]"}, {"label": "☕ Кофе", "action": "[cat_coffee]"}, {"label": "🍔 Бюджетно", "action": "[cat_budget]"}, {"label": "🍷 Премиум", "action": "[cat_premium]"}, {"label": "👨‍👩‍👧‍👦 С детьми", "action": "[cat_kids]"}]}
 
@@ -204,6 +204,7 @@ async def ask_bot(message: UserMessage):
     if any(word in text_lower for word in ["экскурси", "что посмотреть", "куда сходить", "куда съездить", "где погулять", "достопримечательности", "что есть в уфе", "чем заняться", "что еще", "расскажи про уфу", "хочу посмотреть"]):
         return {"answer": "У нас тут есть всё! А что тебе сейчас больше по душе?", "action": "none", "buttons": [{"label": "🏛 История и музеи", "action": "[attr_history]"}, {"label": "🌳 Природа и парки", "action": "[attr_nature]"}, {"label": "🐎 Символы города", "action": "[attr_symbols]"}]}
 
+    # Дальше идут остальные команды...
     if user_text == "[showcase_list]":
         cards = [
             {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route:walk:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
@@ -709,9 +710,12 @@ async def ask_bot(message: UserMessage):
 
     # ✅ ОНБОРДИНГ (ТЕПЕРЬ В САМОМ НИЗУ)
     if "name" not in facts or facts.get("name") == "":
-        name_match = re.search(r'(?:меня зовут|зови меня|я)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
-        if name_match: name = name_match.group(1).capitalize()
-        else: name = user_text.split()[0].capitalize()
+        # Берем последнее слово из фразы (например, из "Ну Яков" берем "Яков")
+        words = [w for w in user_text.split() if w.lower() not in ["ну", "эм", "а", "и", "меня", "зовут", "зови", "я"]]
+        if not words:
+            return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
+        
+        name = words[-1].capitalize() # Берем последнее слово
         
         if len(name) <= 30 and name.lower() not in NAME_BLACKLIST:
             save_fact("name", name)
@@ -720,22 +724,16 @@ async def ask_bot(message: UserMessage):
 
     if "from_city" not in facts or "transport" not in facts:
         city_lower = user_text.lower().strip()
-        
-        # ✅ ИСПРАВЛЕНИЕ БАГА С ГОРОДАМИ (Самара, Самары)
-        city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
-        if city_match:
-            city_to_check = city_match.group(1).lower()
-        else:
-            city_to_check = city_lower
-
         found_city = None
-        for core, canonical in CITY_CORES.items():
-            if core in city_to_check:
-                found_city = canonical
-                break
+        city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
         
-        if not found_city and len(city_to_check) > 2:
-             found_city = city_to_check
+        if city_match:
+            found_city = city_match.group(1).lower()
+        else:
+            for core, canonical in CITY_CORES.items():
+                if core in city_lower:
+                    found_city = canonical
+                    break
         
         if found_city:
             save_fact("from_city", found_city.capitalize())
@@ -749,13 +747,18 @@ async def ask_bot(message: UserMessage):
              return {"answer": "Слушай, а откуда ты к нам приехал? Назови город.", "action": "none"}
 
     if "transport" not in facts:
-        if any(w in text_lower for w in ["поезд", "жд", "вокзал"]): new_transport = "поезд"
-        elif any(w in text_lower for w in ["самолет", "аэропорт", "прилетел"]): new_transport = "самолет"
-        elif any(w in text_lower for w in ["автобус"]): new_transport = "автобус" 
-        elif any(w in text_lower for w in ["машин", "авто", "руле"]): new_transport = "машина"
-        else: new_transport = "неизвестно"
-        save_fact("transport", new_transport)
-        return {"answer": RESPONSES["onboarding_ask_destination"], "action": "none"}
+        # Более умное распознавание транспорта
+        new_transport = None
+        if any(w in text_lower for w in ["поезд", "жд", "вокзал", "железн"]): new_transport = "поезд"
+        elif any(w in text_lower for w in ["самолет", "аэропорт", "прилетел", "летел"]): new_transport = "самолет"
+        elif any(w in text_lower for w in ["автобус", "автостанц"]): new_transport = "автобус" 
+        elif any(w in text_lower for w in ["машин", "авто", "руле", "водител"]): new_transport = "машина"
+        
+        if new_transport:
+            save_fact("transport", new_transport)
+            return {"answer": RESPONSES["onboarding_ask_destination"], "action": "none"}
+        else:
+            return {"answer": "Не совсем понял. Ты приехал на поезде, на самолете, на машине или на автобусе?", "action": "none"}
 
     if "home_address" not in facts:
         if any(w in text_lower for w in ["сюда", "туда", "поедем", "поехали", "давай", "выбрал"]) and len(user_text.split()) < 6:
