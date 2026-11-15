@@ -119,7 +119,8 @@ async def ask_bot(message: UserMessage):
         
         if is_bad:
             return {"answer": care_text, "action": "none", "buttons": [
-                {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории Уфы]"},
+                # ✅ ИСПРАВЛЕНО: Точное название музея
+                {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории города Уфы]"},
                 {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{dest_name}]"}
             ]}
         
@@ -136,6 +137,7 @@ async def ask_bot(message: UserMessage):
             {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/showcase_castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
             {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/showcase_friendship.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
             {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]},
+            # ✅ ИСПРАВЛЕНО: Поставили нормальную картинку для Ожерелья
             {"title": "🌳 Уфимское ожерелье", "desc": "Живописная набережная реки Белой с потрясающим видом.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Уфимское ожерелье]"}, {"label": "📖 Подробнее", "action": "[details_attr:nature:Уфимское ожерелье]"}]}
         ]
         return {"answer": "Выбери, что тебе интересно:", "action": "show_cards", "cards": cards}
@@ -148,6 +150,7 @@ async def ask_bot(message: UserMessage):
     if user_text.startswith("[showcase:"):
         key = user_text.replace("[showcase:", "").replace("]", "")
         name = ""
+        # ✅ ИСПРАВЛЕНО: Добавили else, чтобы не падало с 500 ошибкой
         if "salavat_flowers" in key or "salavat_close" in key:
             name = "Памятник Салавату Юлаеву"
             ans = "Памятник Салавату Юлаеву — самая крупная конная статуя в Европе. Это визитная карточка Уфы."
@@ -157,6 +160,8 @@ async def ask_bot(message: UserMessage):
         elif "castle" in key:
             name = "Белый Замок"
             ans = "Этот белоснежный замок — один из самых фотографируемых объектов Уфы."
+        else:
+            ans = "Информация об этом месте скоро появится."
         
         return {"answer": ans, "action": "none", "image": f"/static/img/showcase_{key}.jpg", "buttons": [
             {"label": "📍 Как доехать", "action": f"[route_choose:{name}]"},
@@ -180,7 +185,7 @@ async def ask_bot(message: UserMessage):
                     is_bad, care_text = check_weather_care(item["name"])
                     if is_bad:
                         return {"answer": care_text, "action": "none", "buttons": [
-                            {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории Уфы]"},
+                            {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории города Уфы]"},
                             {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{item['name']}]"}
                         ]}
                     return {"answer": f"Отличный выбор! Как поедем до {item['name']}?", "action": "none", "buttons": [
@@ -205,14 +210,23 @@ async def ask_bot(message: UserMessage):
                 current_visited.append(place_name)
                 save_fact("visited_places", ",".join(current_visited))
             
-            photo_url = "/static/img/showcase_salavat_flowers.jpg"
-            for attr_key, items in ATTRACTIONS.items():
-                for item in items:
-                    if item["name"].lower() in place_name.lower() or place_name.lower() in item["name"].lower():
-                        photo_url = item["image"]
-                        break
-            if "кашкадан" in place_name.lower(): photo_url = "/static/img/showcase_salavat_flowers.jpg"
-            if "сойка" in place_name.lower(): photo_url = "/static/img/showcase_castle.jpg"
+            # ✅ ИСПРАВЛЕНО: Правильный подбор картинок для фотокарточки
+            photo_url = "/static/img/showcase_salavat_flowers.jpg" # Дефолт
+            photo_mapping = {
+                "музей истории": "/static/img/museum_history.jpg",       # <-- Переименуй файл в папке img
+                "монумент дружбы": "/static/img/monument_friendship.jpg", # <-- Переименуй файл в папке img
+                "белый замок": "/static/img/white_castle.jpg",            # <-- Переименуй файл в папке img
+                "ожерелье": "/static/img/ufa_necklace.jpg",               # <-- Переименуй файл в папке img
+                "парк победы": "/static/img/victory_park.jpg",            # <-- Переименуй файл в папке img
+                "салавата": "/static/img/salavat_yulaev.jpg",             # <-- Переименуй файл в папке img
+                "кашкадан": "/static/img/park_kashkadan.jpg",             # <-- Переименуй файл в папке img
+                "сойка": "/static/img/cafe_soyka.jpg"                     # <-- Переименуй файл в папке img
+            }
+            
+            for key, url in photo_mapping.items():
+                if key in place_name.lower():
+                    photo_url = url
+                    break
             
             return {
                 "answer": f"🎉 Поздравляю! Ты прошел маршрут до {place_name}!\n\n📸 Вот твоя памятная карточка. Сохрани её на карту, чтобы запомнить это место!",
@@ -223,7 +237,8 @@ async def ask_bot(message: UserMessage):
                     "button": "✅ Сохранить на карту"
                 },
                 "buttons": [
-                    {"label": "🏠 На главную", "action": "[route_interests_start]"}
+                    # ✅ ИСПРАВЛЕНО: Кнопка "На главную" теперь ведет в меню достопримечательностей
+                    {"label": "🏠 В главное меню", "action": "[showcase_list]"} 
                 ]
             }
         else:
@@ -256,7 +271,8 @@ async def ask_bot(message: UserMessage):
                     save_pending("guide_route", f"{name}|{mode}|{step_idx}")
                     return {"answer": f"Шаг {step_idx + 1}: {steps[step_idx]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
                 else:
-                    return {"answer": f"🎉 Поздравляю! Ты на месте — {name}. Приятного отдыха!", "action": "none"}
+                    # ✅ ИСПРАВЛЕНО: Если нажали "Дальше" на последнем шаге, вызываем логику "Готово" (выдаем карточку)
+                    return await ask_bot(UserMessage(text="Готово", history=message.history))
         else:
             return {"answer": "Я не вижу активного маршрута. Сначала выбери, куда мы идем.", "action": "none"}
 
@@ -546,7 +562,8 @@ async def ask_bot(message: UserMessage):
             end_lat, end_lon = geocode_address(name + ", Уфа")
 
             if end_lat:
-                if transport == "машина" or mode == "auto":
+                # ✅ ИСПРАВЛЕНО: Убрали проверку на transport == "машина", чтобы кнопка "Такси" всегда вела в Яндекс.Го
+                if mode == "auto":
                     url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
                     return {"answer": f"Автомаршрут до {name} построен.", "action": "show_card", "card": {"type": "map", "title": "🚗 На авто", "text": name, "button": "Открыть Карты", "url": url}}
                 else:
@@ -585,8 +602,11 @@ async def ask_bot(message: UserMessage):
 
     # 10. ОНБОРДИНГ
     if "name" not in facts or facts.get("name") == "":
+        if any(w in text_lower for w in ["заселиться", "жить", "где", "не знаю", "вещи", "отель", "квартир"]):
+            return {"answer": "Слушай, я пока не знаю, как тебя зовут. Но если тебе нужно жилье, я могу помочь! Как тебя зовут? (А чтобы посмотреть отели, нажми кнопку ниже)", "action": "none", "buttons": [{"label": "🏨 Где жить", "action": "[housing_start]"}]}
+
         words = re.findall(r'\b[А-Яа-яЁё]{2,}\b', user_text)
-        stop_words = ["меня", "зовут", "зови", "это", "ну", "привет", "здравствуйте", "добрый", "день", "вечер", "утро"]
+        stop_words = ["меня", "зовут", "зови", "это", "ну", "привет", "здравствуйте", "добрый", "день", "вечер", "утро", "знаю", "куда", "заселиться", "где", "жить"]
         words = [w for w in words if w.lower() not in stop_words]
         
         if not words:
@@ -627,7 +647,6 @@ async def ask_bot(message: UserMessage):
             return {"answer": "Не совсем понял. Ты приехал на поезде, на самолете, на машине или на автобусе?", "action": "none"}
 
     if "home_address" not in facts:
-        # ✅ ИСПРАВЛЕНИЕ: Если человек пишет "не знаю", "куда-нибудь", "вещи оставить" - не сохраняем как адрес!
         if any(w in text_lower for w in ["не знаю", "куда-нибудь", "куда-то", "вещи", "заселиться", "где жить", "где остановиться", "поспать"]) or len(user_text.split()) < 4:
              return {"answer": "Понял, тебе нужно жилье. Вот варианты, где можно остановиться:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
 
@@ -646,6 +665,8 @@ async def ask_bot(message: UserMessage):
             care_msg = "По пути следования будет заправка Лукойл, советую заправиться, если бак пустой."
         elif transport == "поезд": 
             care_msg = "Кстати, рядом с вашим адресом есть круглосуточный магазин 'Купец', если проголодались."
+        elif transport == "самолет":
+            care_msg = "Кстати, из аэропорта до города можно доехать на автобусе 110 или вызвать такси."
         
         if transport == "машина":
             if not facts.get("current_location"):
@@ -692,7 +713,7 @@ async def ask_bot(message: UserMessage):
             {"label": "🚶 Пешком", "action": f"[route:walk:{user_text}]"}
         ]}
 
-    # 11. ЗАПАСНОЙ ВАРИАНТ (YANDEX GPT) — С КНОПКАМИ
+    # 11. ЗАПАСНОЙ ВАРИАНТ (YANDEX GPT)
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(None, ask_uje_router, user_text, facts, message.history)
