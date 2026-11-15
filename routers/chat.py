@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-import asyncio, re, random
+import asyncio, re
 
 from memory import save_fact, get_all_facts, save_pending, get_pending, clear_pending, clear_all_facts
 from tools import (
@@ -17,8 +17,11 @@ class UserMessage(BaseModel):
     text: str
     history: Optional[List[Dict[str, str]]] = []
 
-# ✅ ФУНКЦИЯ ГЕНЕРАЦИИ МАРШРУТА ЧЕРЕЗ GPT
+# ✅ ГЕНЕРАЦИЯ МАРШРУТА ЧЕРЕЗ GPT
 async def generate_gpt_route(start_name: str, dest_name: str, mode: str):
+    if start_name.lower() == dest_name.lower():
+        return f"Слушай, ты же уже в {dest_name}! Куда именно ты хочешь пойти? Назови точное место."
+    
     prompt = f"Ты — заботливый гид по Уфе по имени БашГид. Турист хочет добраться от '{start_name}' до '{dest_name}' на {mode}. "
     prompt += "Придумай правдоподобный маршрут (названия остановок, номера автобусов, ориентиры для пешеходов), как будто ты ведешь его за руку. Ответь кратко, в 3-4 предложениях, с заботой и юмором."
     
@@ -35,11 +38,24 @@ async def generate_gpt_route(start_name: str, dest_name: str, mode: str):
         return f"Иди прямо, никуда не сворачивай. По пути увидишь красивые места, а если заблудишься — спроси у местных, они подскажут дорогу до {dest_name}."
     return "Маршрут не найден."
 
-# ✅ ФУНКЦИЯ ЗАБОТЫ О ПОГОДЕ
+# ✅ ФУНКЦИЯ ПОИСКА ГОРОДА С ПАДЕЖАМИ
+def find_city(user_text: str):
+    text_lower = user_text.lower().strip()
+    city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
+    if city_match:
+        city_word = city_match.group(1).lower()
+    else:
+        city_word = text_lower
+    
+    for core, canonical in CITY_CORES.items():
+        if core in city_word:
+            return canonical
+    return None
+
+# ✅ ЖЕСТКАЯ ЗАБОТА О ПОГОДЕ (ТОЛЬКО ДЛЯ ОЖЕРЕЛЬЯ)
 def check_weather_care(dest_name: str):
-    outdoor_keywords = ["парк", "набережн", "ожерель", "кашкадан", "сад", "сквер"]
-    if any(word in dest_name.lower() for word in outdoor_keywords):
-        return True, "Слушай, я тут посмотрел прогноз — через пару часов погода испортится (дождь). Я бы не хотел, чтобы ты промок и заболел. Давай лучше сходим в музей (там тепло и сухо), а в парк сходим, когда солнце выглянет?"
+    if "ожерелье" in dest_name.lower():
+        return True, "Слушай, я тут посмотрел прогноз — через пару часов погода испортится (дождь). Я бы не хотел, чтобы ты промок и заболел. Давай лучше сходим в музей (там тепло и сухо), а на набережную сходим, когда солнце выглянет?"
     return False, ""
 
 @router.post("/api/ask")
@@ -100,10 +116,11 @@ async def ask_bot(message: UserMessage):
     if user_text.startswith("[route_choose:"):
         dest_name = user_text.replace("[route_choose:", "").replace("]", "")
         is_bad, care_text = check_weather_care(dest_name)
-        if is_bad and random.random() < 0.7:
+        
+        if is_bad:
             return {"answer": care_text, "action": "none", "buttons": [
                 {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории Уфы]"},
-                {"label": "❌ Нет, я все равно хочу в парк", "action": f"[route:walk:{dest_name}]"}
+                {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{dest_name}]"}
             ]}
         
         return {"answer": f"Отлично! Как поедем до {dest_name}?", "action": "none", "buttons": [
@@ -112,13 +129,14 @@ async def ask_bot(message: UserMessage):
             {"label": "🚶 Пешком", "action": f"[route:walk:{dest_name}]"}
         ]}
 
-    # 4. КАРТОЧКИ (ОТЕЛИ, РЕСТОРАНЫ, МУЗЕИ)
+    # 4. КАРТОЧКИ
     if user_text == "[showcase_list]":
         cards = [
             {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
             {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/showcase_castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
             {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/showcase_friendship.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
-            {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]}
+            {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/showcase_salavat_close.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]},
+            {"title": "🌳 Уфимское ожерелье", "desc": "Живописная набережная реки Белой с потрясающим видом.", "image": "/static/img/showcase_salavat_flowers.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Уфимское ожерелье]"}, {"label": "📖 Подробнее", "action": "[details_attr:nature:Уфимское ожерелье]"}]}
         ]
         return {"answer": "Выбери, что тебе интересно:", "action": "show_cards", "cards": cards}
 
@@ -159,20 +177,25 @@ async def ask_bot(message: UserMessage):
         for attr_key, items in ATTRACTIONS.items():
             for item in items:
                 if item["name"].lower() in text_lower:
+                    is_bad, care_text = check_weather_care(item["name"])
+                    if is_bad:
+                        return {"answer": care_text, "action": "none", "buttons": [
+                            {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории Уфы]"},
+                            {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{item['name']}]"}
+                        ]}
                     return {"answer": f"Отличный выбор! Как поедем до {item['name']}?", "action": "none", "buttons": [
                         {"label": "🚕 Такси", "action": f"[route:taxi:{item['name']}]"},
                         {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
                         {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
                     ]}
 
-    # 5. ОБРАБОТКА "ГОТОВО" (ЗАВЕРШЕНИЕ МАРШРУТА И ФОТОКАРТОЧКА)
+    # 5. ОБРАБОТКА "ГОТОВО" (ФОТОКАРТОЧКА)
     if user_text.lower() in ["готово", "все", "закончил", "приехал", "доехал", "пришел", "на месте"]:
         pending = get_pending()
         if pending and pending.get("action") == "guide_route":
             clear_pending()
             parts = pending.get("params").split("|")
             place_name = parts[0]
-            # Очищаем от CITY_
             if place_name.startswith("CITY_"):
                 _, start, end = place_name.split("_")
                 place_name = end
@@ -182,8 +205,7 @@ async def ask_bot(message: UserMessage):
                 current_visited.append(place_name)
                 save_fact("visited_places", ",".join(current_visited))
             
-            # Ищем картинку для этого места
-            photo_url = "/static/img/showcase_salavat_flowers.jpg" # дефолт
+            photo_url = "/static/img/showcase_salavat_flowers.jpg"
             for attr_key, items in ATTRACTIONS.items():
                 for item in items:
                     if item["name"].lower() in place_name.lower() or place_name.lower() in item["name"].lower():
@@ -493,7 +515,7 @@ async def ask_bot(message: UserMessage):
                 {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
             ]}
 
-    # 9. ОБРАБОТКА МАРШРУТОВ (ROUTE: TAXI/BUS/WALK)
+    # 9. МАРШРУТЫ
     if user_text.startswith("[route:"):
         clear_pending()
         raw_parts = user_text.replace("[route:", "").replace("]", "").split(":", 2)
@@ -547,7 +569,6 @@ async def ask_bot(message: UserMessage):
                 return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {found_route[0]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
             gpt_text = await generate_gpt_route(start_name, name, "автобусе" if mode == "bus" else "пешком")
-            # ✅ ЗАПОМИНАЕМ МЕСТО, ЧТОБЫ ВЫДАТЬ ФОТОКАРТОЧКУ ПРИ "ГОТОВО"
             save_pending("guide_route", f"{name}|{mode}|0")
             return {"answer": gpt_text, "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
@@ -579,17 +600,7 @@ async def ask_bot(message: UserMessage):
         return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
 
     if "from_city" not in facts or "transport" not in facts:
-        city_lower = user_text.lower().strip()
-        found_city = None
-        city_match = re.search(r'(?:из|с|приехал из|прибыл из)\s+([А-ЯЁ][а-яё]+)', user_text, re.IGNORECASE)
-        
-        if city_match:
-            found_city = city_match.group(1).lower()
-        else:
-            for core, canonical in CITY_CORES.items():
-                if core in city_lower:
-                    found_city = canonical
-                    break
+        found_city = find_city(user_text)
         
         if found_city:
             save_fact("from_city", found_city.capitalize())
@@ -616,8 +627,9 @@ async def ask_bot(message: UserMessage):
             return {"answer": "Не совсем понял. Ты приехал на поезде, на самолете, на машине или на автобусе?", "action": "none"}
 
     if "home_address" not in facts:
-        if any(w in text_lower for w in ["сюда", "туда", "поедем", "поехали", "давай", "выбрал"]) and len(user_text.split()) < 6:
-             return {"answer": "Я не совсем поняла, куда именно. Назови точный адрес, отель или место.", "action": "none"}
+        # ✅ ИСПРАВЛЕНИЕ: Если человек пишет "не знаю", "куда-нибудь", "вещи оставить" - не сохраняем как адрес!
+        if any(w in text_lower for w in ["не знаю", "куда-нибудь", "куда-то", "вещи", "заселиться", "где жить", "где остановиться", "поспать"]) or len(user_text.split()) < 4:
+             return {"answer": "Понял, тебе нужно жилье. Вот варианты, где можно остановиться:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
 
         clean_text_for_address = user_text.replace(',', ' ')
         clean_words = [w for w in clean_text_for_address.split() if w.lower() not in ["нет", "мне", "нужно", "пожалуйста", "хочу", "поехали", "поедем", "давай"]]
@@ -680,7 +692,7 @@ async def ask_bot(message: UserMessage):
             {"label": "🚶 Пешком", "action": f"[route:walk:{user_text}]"}
         ]}
 
-    # 11. ЗАПАСНОЙ ВАРИАНТ (YANDEX GPT)
+    # 11. ЗАПАСНОЙ ВАРИАНТ (YANDEX GPT) — С КНОПКАМИ
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(None, ask_uje_router, user_text, facts, message.history)
@@ -690,12 +702,20 @@ async def ask_bot(message: UserMessage):
         if not reply_text:
             reply_text = await loop.run_in_executor(None, ask_gpt_free, user_text, message.history)
         
-        return {"answer": reply_text or "Слушай, я тут немного задумалась, но давай попробуем еще раз?", "action": "none"}
+        return {"answer": reply_text or "Слушай, я тут немного задумалась, но давай попробуем еще раз?", "action": "none", "buttons": [
+            {"label": "🍽 Где поесть", "action": "[food_start]"},
+            {"label": "🏛 Что посмотреть", "action": "[attr_history]"},
+            {"label": "📅 Маршрут по интересам", "action": "[route_interests_start]"}
+        ]}
         
     except Exception as e:
         try:
             loop = asyncio.get_running_loop()
             fallback_reply = await loop.run_in_executor(None, ask_gpt_free, user_text, message.history)
-            return {"answer": fallback_reply or "Я на связи, но у меня тут небольшие помехи. Попробуй еще раз!", "action": "none"}
+            return {"answer": fallback_reply or "Я на связи, но у меня тут небольшие помехи. Попробуй еще раз!", "action": "none", "buttons": [
+                {"label": "🍽 Где поесть", "action": "[food_start]"},
+                {"label": "🏛 Что посмотреть", "action": "[attr_history]"},
+                {"label": "📅 Маршрут по интересам", "action": "[route_interests_start]"}
+            ]}
         except:
             return {"answer": "У меня тут небольшие помехи. Давай еще раз попробуем?", "action": "none"}
