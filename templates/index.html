@@ -133,6 +133,7 @@
     </style>
 </head>
 <body>
+    <!-- Кнопка сброса для демо -->
     <button onclick="resetBot()" style="position: absolute; top: 75px; right: 15px; background: #FFD700; color: #005BBB; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; z-index: 20; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" title="Сбросить память (демо)">🔄</button>
     
     <header class="header">
@@ -140,7 +141,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD700" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 8 8 9.2 9 10.2V16C9 18 7.5 19.5 5.5 19.5H4V22H5.5C8 22 10 20.5 11 18.5C11.5 19.5 12 20 13 21H14.5C15.5 20 16 19.5 16.5 18.5C17.5 20.5 19.5 22 22 22H23.5V19.5H22C20 19.5 18.5 18 18.5 16V10.2C19.5 9.2 20 8 20 6.5C20 4 18 2 15.5 2H12ZM12 4H15.5C16.8 4 18 5.2 18 6.5C18 7.8 16.8 9 15.5 9H12V4ZM10.5 9H12V11.5H10.5C10.5 10.5 10.5 9.5 10.5 9Z"/></svg>
             БАШГИД
         </div>
-        <div class="header-emblem"><img src="/static/gerb.png" alt="Герб" style="height: 100%; width: auto;"></div>
+        <div class="header-emblem"><img src="/static/emblem.png" alt="Герб" style="height: 100%; width: auto;"></div>
         <div class="header-right">
             <div class="weather-clock">
                 <div id="weather">⏳</div>
@@ -169,7 +170,6 @@
         <div style="border-top: 1px solid #e1e8ed; margin: 10px 0;"></div>
         
         <button class="menu-btn" onclick="menuAction('openLegalModal()')" style="font-size: 0.9rem; background: #fff; border: 1px dashed #ccc;">📜 Юридическая информация</button>
-
         <button class="menu-btn close-btn" onclick="toggleMenu()">✖ Закрыть меню</button>
     </div>
 
@@ -178,11 +178,11 @@
     <div class="app-layout">
         <div class="sidebar" id="sidebar-left">
             <div class="showcase-card" onclick="quickAction('[showcase:salavat_flowers]')">
-                <img src="/static/img/salavat.jpg" class="showcase-img" alt="Салават Юлаев">
+                <img src="/static/img/salavat_yulaev.jpg" class="showcase-img" alt="Салават Юлаев">
                 <div class="showcase-title">🐎 Салават Юлаев</div>
             </div>
             <div class="showcase-card" onclick="quickAction('[showcase:friendship]')">
-                <img src="/static/img/monument.jpg" class="showcase-img" alt="Монумент Дружбы">
+                <img src="/static/img/showcase_friendship.jpg" class="showcase-img" alt="Монумент Дружбы">
                 <div class="showcase-title">🏛 Монумент Дружбы</div>
             </div>
         </div>
@@ -204,11 +204,11 @@
 
         <div class="sidebar" id="sidebar-right">
             <div class="showcase-card" onclick="quickAction('[showcase:castle]')">
-                <img src="/static/img/castle.jpg" class="showcase-img" alt="Замок">
+                <img src="/static/img/showcase_castle.jpg" class="showcase-img" alt="Замок">
                 <div class="showcase-title">🏰 Белый Замок</div>
             </div>
             <div class="showcase-card" onclick="quickAction('[showcase:salavat_close]')">
-                <img src="/static/img/salavat.jpg" class="showcase-img" alt="Салават">
+                <img src="/static/img/showcase_salavat_flowers.jpg" class="showcase-img" alt="Салават">
                 <div class="showcase-title">🐎 Салават</div>
             </div>
         </div>
@@ -229,8 +229,29 @@
     </div>
 
     <script>
+        // ===== НОВАЯ ЛОГИКА СЕССИЙ (сохраняет твой стиль) =====
+        function getSessionId() {
+            let sid = localStorage.getItem('bashgid_sid');
+            if (!sid) {
+                sid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+                localStorage.setItem('bashgid_sid', sid);
+            }
+            return sid;
+        }
+        const SESSION_ID = getSessionId();
+
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v={{ asset_version }}');
-        async function resetBot() { if(confirm("Сбросить память?")) { await fetch('/api/reset', { method: 'POST' }); localStorage.removeItem('guide_gender'); location.reload(); } }
+        
+        async function resetBot() { 
+            if(confirm("Сбросить память?")) { 
+                await fetch('/api/reset', { method: 'POST', headers: {'X-Session-Id': SESSION_ID} }); 
+                localStorage.removeItem('guide_gender'); 
+                location.reload(); 
+            } 
+        }
         
         const audioPlayer = new Audio(); let isVoiceEnabled = true;
         const userInputField = document.getElementById('userInput');
@@ -298,7 +319,12 @@
             if (!cleanText) return;
             showAvatar();
             try {
-                const res = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: cleanText }) });
+                // ✅ Добавлен заголовок X-Session-Id для TTS
+                const res = await fetch('/api/tts', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-Session-Id': SESSION_ID }, 
+                    body: JSON.stringify({ text: cleanText }) 
+                });
                 if (res.ok) { 
                     const blob = await res.blob(); 
                     audioPlayer.src = URL.createObjectURL(blob); 
@@ -369,7 +395,12 @@
             const loadingId = addMessage("...", 'bot');
             
             try {
-                const response = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text, history: chatHistory }) });
+                // ✅ Добавлен заголовок X-Session-Id в основной запрос
+                const response = await fetch('/api/ask', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-Session-Id': SESSION_ID }, 
+                    body: JSON.stringify({ text: text, history: chatHistory }) 
+                });
                 const data = await response.json();
                 
                 const loadEl = document.getElementById(loadingId);
@@ -623,7 +654,8 @@
             const gender = localStorage.getItem('guide_gender') || 'female';
             setGuideAvatar(gender);
             try {
-                const data = await (await fetch('/api/status')).json();
+                // ✅ Добавлен заголовок X-Session-Id при инициализации
+                const data = await (await fetch('/api/status', { headers: {'X-Session-Id': SESSION_ID} })).json();
                 if (data.is_new) { 
                     const msgId = addMessage(data.greeting, 'bot'); 
                     pendingVoiceText = data.greeting;
@@ -646,7 +678,7 @@
                 } 
                 else {
                     const loadingId = addMessage("БашГид просыпается...", 'bot');
-                    const brief = await (await fetch('/api/briefing')).json();
+                    const brief = await (await fetch('/api/briefing', { headers: {'X-Session-Id': SESSION_ID} })).json();
                     const loadEl = document.getElementById(loadingId);
                     if (loadEl) loadEl.remove(); 
                     if (brief.answer) { addMessage(brief.answer, 'bot'); speak(brief.answer); }
@@ -655,12 +687,16 @@
         }
         window.addEventListener('DOMContentLoaded', () => { setTimeout(initApp, 300); });
 
-        function handleFileUpload(event) {
+        async function handleFileUpload(event) {
             const file = event.target.files[0]; if (!file) return;
             addMessage(`[Прикреплен файл: ${file.name}]`, 'user');
             const loadingId = addMessage("БашГид изучает файл...", 'bot loading');
             const formData = new FormData(); formData.append("file", file);
-            fetch('/api/upload', { method: 'POST', body: formData }).then(res => res.json()).then(data => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage(data.answer, 'bot'); speak(data.answer); }).catch(() => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage('Ошибка при загрузке.', 'bot'); });
+            // ✅ Добавлен заголовок X-Session-Id при загрузке файлов
+            fetch('/api/upload', { method: 'POST', headers: {'X-Session-Id': SESSION_ID}, body: formData })
+                .then(res => res.json())
+                .then(data => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage(data.answer, 'bot'); speak(data.answer); })
+                .catch(() => { const el = document.getElementById(loadingId); if(el) el.remove(); addMessage('Ошибка при загрузке.', 'bot'); });
             event.target.value = '';
         }
 
@@ -669,7 +705,12 @@
                 const geoBtn = document.getElementById('geoBtn'); geoBtn.style.display = 'none';
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     try {
-                        const data = await (await fetch('/api/location', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) })).json();
+                        // ✅ Добавлен заголовок X-Session-Id при отправке геолокации
+                        const data = await (await fetch('/api/location', { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json', 'X-Session-Id': SESSION_ID }, 
+                            body: JSON.stringify({ lat: position.coords.latitude, lon: position.coords.longitude }) 
+                        })).json();
                         if (data.answer) {
                             const msgId = addMessage(data.answer, 'bot'); speak(data.answer);
                             const msgDiv = document.getElementById(msgId);

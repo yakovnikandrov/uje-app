@@ -1,9 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import asyncio, re
 
-from memory import save_fact, get_all_facts, save_pending, get_pending, clear_pending, clear_all_facts
+from memory import save_fact, get_all_facts, save_pending, get_pending, clear_pending, clear_all_facts, log_event
 from tools import (
     get_real_weather, get_taxi_link, get_auto_map_link, get_bus_map_link, get_walk_map_link,
     geocode_address, RESTAURANTS, ATTRACTIONS, HOTELS, APARTMENTS, DELIVERY_PLACES, DEMO_ROUTES, DEMO_INTEREST_ROUTES, CITY_ROUTES
@@ -16,24 +16,6 @@ router = APIRouter()
 class UserMessage(BaseModel):
     text: str
     history: Optional[List[Dict[str, str]]] = []
-
-# ✅ СЛОВАРЬ ДЛЯ ПРАВИЛЬНЫХ КАРТИНОК (чтобы не зависеть от старых названий в tools.py)
-IMAGE_MAP = {
-    "Салават Юлаев": "/static/img/salavat.jpg",
-    "Монумент Дружбы": "/static/img/monument.jpg",
-    "Белый Замок": "/static/img/castle.jpg",
-    "Уфимское ожерелье": "/static/img/ozherelye.jpg",
-    "Парк Победы": "/static/img/victory_park.jpg",
-    "Музей истории": "/static/img/museum.jpg",
-    "Парк Кашкадан": "/static/img/kashkadan.jpg",
-    "Сойка": "/static/img/soyka.jpg"
-}
-
-def get_image(name: str, default: str = "/static/img/salavat.jpg"):
-    for key, url in IMAGE_MAP.items():
-        if key.lower() in name.lower():
-            return url
-    return default
 
 # ✅ ГЕНЕРАЦИЯ МАРШРУТА ЧЕРЕЗ GPT
 async def generate_gpt_route(start_name: str, dest_name: str, mode: str):
@@ -77,15 +59,18 @@ def check_weather_care(dest_name: str):
     return False, ""
 
 @router.post("/api/ask")
-async def ask_bot(message: UserMessage):
+async def ask_bot(message: UserMessage, request: Request):
+    # ✅ ИСПРАВЛЕНИЕ: Получаем session_id из middleware
+    sid = getattr(request.state, "session_id", "anon_default")
+    
     user_text = message.text.strip()
     text_lower = user_text.lower()
-    facts = get_all_facts()
+    facts = get_all_facts(sid)  # ✅ Передаем sid
     transport = facts.get("transport", "неизвестно")
     home_addr = facts.get("home_address", "").strip()
     visited_places = facts.get("visited_places", "")
-    pending = get_pending()
-    
+    pending = get_pending(sid)  # ✅ Передаем sid
+
     # ПРИВЕТСТВИЕ
     if user_text == "С возвращением!" or (text_lower == "привет" and facts.get("name")):
         name = facts.get("name", "друг")
@@ -94,19 +79,19 @@ async def ask_bot(message: UserMessage):
             {"label": "🏛 Что посмотреть", "action": "[attr_history]"},
             {"label": "📅 Маршрут по интересам", "action": "[route_interests_start]"}
         ]}
-    
+
     # 1. ТАКСИ
     if user_text == "[call_taxi_start]":
-        save_pending("wait_taxi_address", "")
+        save_pending(sid, "wait_taxi_address", "")  # ✅ Передаем sid
         return {"answer": "Куда поедем? Назови адрес, отель или место, и я вызову такси.", "action": "none"}
 
     if pending and pending.get("action") == "wait_taxi_address":
-        clear_pending()
+        clear_pending(sid)  # ✅ Передаем sid
         end_lat, end_lon = geocode_address(user_text + ", Уфа")
         if end_lat:
             loc_str = facts.get("current_location", "")
             if not loc_str:
-                save_pending("wait_geo", f"{end_lat},{end_lon}:{user_text}")
+                save_pending(sid, "wait_geo", f"{end_lat},{end_lon}:{user_text}")
                 return {"answer": f"Отлично, едем до {user_text}. Нажми на компас 🧭, чтобы я знала, откуда тебя забрать.", "action": "none"}
             
             start_lat, start_lon = map(float, loc_str.split(','))
@@ -121,13 +106,15 @@ async def ask_bot(message: UserMessage):
 
     # 2. ВЫБОР ГИДА
     if user_text == "[select_guide:female]":
-        clear_all_facts()
-        save_fact("guide_gender", "female")
+        clear_all_facts(sid)  # ✅ Передаем sid
+        save_fact(sid, "guide_gender", "female")  # ✅ Передаем sid
+        log_event(sid, "onboarding_step", {"step": "guide_selected", "gender": "female"})
         return {"answer": "Отличный выбор! Я рада приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
-    
+
     if user_text == "[select_guide:male]":
-        clear_all_facts()
-        save_fact("guide_gender", "male")
+        clear_all_facts(sid)
+        save_fact(sid, "guide_gender", "male")
+        log_event(sid, "onboarding_step", {"step": "guide_selected", "gender": "male"})
         return {"answer": "Отличный выбор! Я рад приветствовать вас в нашей республике! Как к вам обращаться?", "action": "none", "quick_actions": []}
 
     # 3. ВЫБОР ТРАНСПОРТА (ПОСЛЕ КАРТОЧКИ)
@@ -136,8 +123,9 @@ async def ask_bot(message: UserMessage):
         is_bad, care_text = check_weather_care(dest_name)
         
         if is_bad:
+            log_event(sid, "weather_care_shown", {"destination": dest_name})
             return {"answer": care_text, "action": "none", "buttons": [
-                {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории города Уфы]"},
+                {"label": "✅ Да, давай в музей", "action": "[route:bus:Музей истории города Уфы]"},
                 {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{dest_name}]"}
             ]}
         
@@ -147,10 +135,10 @@ async def ask_bot(message: UserMessage):
             {"label": "🚶 Пешком", "action": f"[route:walk:{dest_name}]"}
         ]}
 
-    # 4. КАРТОЧКИ (Используем новые картинки из IMAGE_MAP)
+    # 4. КАРТОЧКИ ВИТРИНЫ (ПУТИ ИСПРАВЛЕНЫ ПОД ТВОИ ФАЙЛЫ)
     if user_text == "[showcase_list]":
         cards = [
-            {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/salavat.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
+            {"title": "🐎 Салават Юлаев", "desc": "Самая крупная конная статуя в Европе, визитная карточка Уфы.", "image": "/static/img/salavat_yulaev.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_flowers]"}]},
             {"title": "🏰 Белый Замок", "desc": "Один из самых фотографируемых объектов города.", "image": "/static/img/castle.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Белый Замок]"}, {"label": "📖 Подробнее", "action": "[showcase:castle]"}]},
             {"title": "🏛 Монумент Дружбы", "desc": "Гранитный обелиск высотой 35 метров в честь дружбы народов.", "image": "/static/img/monument.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Монумент Дружбы]"}, {"label": "📖 Подробнее", "action": "[showcase:friendship]"}]},
             {"title": "🐎 Салават крупным планом", "desc": "Национальный герой Башкирии.", "image": "/static/img/salavat.jpg", "buttons": [{"label": "📍 Как доехать", "action": "[route_choose:Памятник Салавату Юлаеву]"}, {"label": "📖 Подробнее", "action": "[showcase:salavat_close]"}]},
@@ -160,17 +148,19 @@ async def ask_bot(message: UserMessage):
 
     if user_text.startswith("[set_home:"):
         place_name = user_text.replace("[set_home:", "").replace("]", "")
-        save_fact("home_address", place_name)
+        save_fact(sid, "home_address", place_name)
+        log_event(sid, "home_set", {"address": place_name})
         return {"answer": f"Отлично! Запомнила, что ты остановился в {place_name}.", "action": "none"}
 
     if user_text.startswith("[showcase:"):
         key = user_text.replace("[showcase:", "").replace("]", "")
         name = ""
         image_url = "/static/img/salavat.jpg" # Дефолт
+        
         if "salavat_flowers" in key or "salavat_close" in key:
             name = "Памятник Салавату Юлаеву"
             ans = "Памятник Салавату Юлаеву — самая крупная конная статуя в Европе. Это визитная карточка Уфы."
-            image_url = "/static/img/salavat.jpg"
+            image_url = "/static/img/salavat_yulaev.jpg" if "flowers" in key else "/static/img/salavat.jpg"
         elif "friendship" in key:
             name = "Монумент Дружбы"
             ans = "Монумент Дружбы — это гранитный обелиск высотой 35 метров."
@@ -203,8 +193,9 @@ async def ask_bot(message: UserMessage):
                 if item["name"].lower() in text_lower:
                     is_bad, care_text = check_weather_care(item["name"])
                     if is_bad:
+                        log_event(sid, "weather_care_shown", {"destination": item["name"]})
                         return {"answer": care_text, "action": "none", "buttons": [
-                            {"label": "✅ Да, давай в музей", "action": "[route:walk:Музей истории города Уфы]"},
+                            {"label": "✅ Да, давай в музей", "action": "[route:bus:Музей истории города Уфы]"},
                             {"label": "❌ Нет, я все равно хочу на набережную", "action": f"[route:walk:{item['name']}]"}
                         ]}
                     return {"answer": f"Отличный выбор! Как поедем до {item['name']}?", "action": "none", "buttons": [
@@ -215,9 +206,9 @@ async def ask_bot(message: UserMessage):
 
     # 5. ОБРАБОТКА "ГОТОВО" (ФОТОКАРТОЧКА)
     if user_text.lower() in ["готово", "все", "закончил", "приехал", "доехал", "пришел", "на месте"]:
-        pending = get_pending()
+        pending = get_pending(sid)
         if pending and pending.get("action") == "guide_route":
-            clear_pending()
+            clear_pending(sid)
             parts = pending.get("params").split("|")
             place_name = parts[0]
             if place_name.startswith("CITY_"):
@@ -227,11 +218,31 @@ async def ask_bot(message: UserMessage):
             current_visited = visited_places.split(",") if visited_places else []
             if place_name not in current_visited:
                 current_visited.append(place_name)
-                save_fact("visited_places", ",".join(current_visited))
+                save_fact(sid, "visited_places", ",".join(current_visited))
             
-            # ✅ Берем картинку из нашего словаря!
-            photo_url = get_image(place_name)
+            log_event(sid, "route_completed", {"destination": place_name})
             
+            # ✅ ОПРЕДЕЛЯЕМ КАРТИНКУ ПО НАЗВАНИЮ МЕСТА (ПРАВИЛЬНЫЕ ПУТИ)
+            photo_url = "/static/img/salavat_yulaev.jpg"
+            pl_lower = place_name.lower()
+            if "ожерелье" in pl_lower: photo_url = "/static/img/ozherelye.jpg"
+            elif "кашкадан" in pl_lower: photo_url = "/static/img/kashkadan.jpg"
+            elif "монумент" in pl_lower or "дружбы" in pl_lower: photo_url = "/static/img/monument.jpg"
+            elif "салват" in pl_lower: photo_url = "/static/img/salavat_yulaev.jpg"
+            elif "белый замок" in pl_lower or "castle" in pl_lower: photo_url = "/static/img/castle.jpg"
+            elif "ленин" in pl_lower: photo_url = "/static/img/lenin.jpg"
+            elif "колоннад" in pl_lower: photo_url = "/static/img/kolonnada.jpg"
+            elif "побежд" in pl_lower: photo_url = "/static/img/victory_park.jpg"
+            elif "музей истор" in pl_lower: photo_url = "/static/img/museum.jpg"
+            elif "аксаков" in pl_lower: photo_url = "/static/img/muzei_aksakova.jpg"
+            elif "худайберд" in pl_lower: photo_url = "/static/img/muzei_hudaiberdina.jpg"
+            elif "боевой славы" in pl_lower: photo_url = "/static/img/muzei_boevoy_slavy.jpg"
+            elif "советская" in pl_lower: photo_url = "/static/img/sovetskaya.jpg"
+            elif "terra" in pl_lower or "башкир" in pl_lower: photo_url = "/static/img/terra_bashkiria.jpg"
+            elif "азимут" in pl_lower: photo_url = "/static/img/bashkiriya.jpg"
+            elif "сойка" in pl_lower: photo_url = "/static/img/soyka.jpg"
+            elif "дом башкирской" in pl_lower: photo_url = "/static/img/dom_bashkirskoy_kuhni.jpg"
+
             return {
                 "answer": f"🎉 Поздравляю! Ты прошел маршрут до {place_name}!\n\n📸 Вот твоя памятная карточка. Сохрани её на карту, чтобы запомнить это место!",
                 "action": "show_photo_card",
@@ -252,7 +263,7 @@ async def ask_bot(message: UserMessage):
 
     # 6. ОБРАБОТКА "ДАЛЬШЕ" (ШАГИ)
     if user_text.lower() in ["дальше", "далее", "next", "иду"]:
-        pending = get_pending()
+        pending = get_pending(sid)
         if pending and pending.get("action") == "guide_route":
             parts = pending.get("params").split("|")
             name = parts[0]
@@ -267,14 +278,14 @@ async def ask_bot(message: UserMessage):
                     route_data = {"bus": city_route["bus"]}
             else:
                 route_data = DEMO_ROUTES.get(name)
-
+            
             if route_data and mode in route_data:
                 steps = route_data[mode]
                 if step_idx < len(steps):
-                    save_pending("guide_route", f"{name}|{mode}|{step_idx}")
+                    save_pending(sid, "guide_route", f"{name}|{mode}|{step_idx}")
                     return {"answer": f"Шаг {step_idx + 1}: {steps[step_idx]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
                 else:
-                    return await ask_bot(UserMessage(text="Готово", history=message.history))
+                    return await ask_bot(UserMessage(text="Готово", history=message.history), request)
         else:
             return {"answer": "Я не вижу активного маршрута. Сначала выбери, куда мы идем.", "action": "none"}
 
@@ -289,7 +300,7 @@ async def ask_bot(message: UserMessage):
 
     if user_text.startswith("[ri_interest:"):
         interest = user_text.replace("[ri_interest:", "").replace("]", "")
-        save_fact("current_route_interest", interest)
+        save_fact(sid, "current_route_interest", interest)
         
         weather_data = get_real_weather("Уфа")
         is_bad_weather = False
@@ -299,8 +310,9 @@ async def ask_bot(message: UserMessage):
             if temp < 5 or "дождь" in weather_data.lower() or "снег" in weather_data.lower():
                 is_bad_weather = True
         except: pass
-
-        if is_bad_weather and interest in ["nature", "mix"]:
+        
+        # ✅ ФИКС БАГА: погода влияет только на nature, не на mix
+        if is_bad_weather and interest == "nature":
             return {"answer": f"Слушай, на улице сейчас {weather_data}. Для прогулок не очень. Давай я заменю природу на уютные места, чтобы не мёрзнуть?", "action": "none", "buttons": [
                 {"label": "✅ Да, давай в тепло", "action": "[ri_agree_weather]"},
                 {"label": "❄️ Нет, хочу гулять", "action": "[ri_force_weather]"}
@@ -323,7 +335,7 @@ async def ask_bot(message: UserMessage):
             return {"answer": text, "action": "none", "buttons": buttons}
 
     if user_text == "[ri_agree_weather]":
-        save_fact("current_route_interest", "bad_weather_offer")
+        save_fact(sid, "current_route_interest", "bad_weather_offer")
         route = DEMO_INTEREST_ROUTES["bad_weather_offer"]
         text = f"Отлично! Вот твой маршрут: {route['title']}\n\n" + "\n\n".join([s['text'] for s in route["steps"]])
         buttons = []
@@ -335,7 +347,7 @@ async def ask_bot(message: UserMessage):
         return {"answer": text, "action": "none", "buttons": buttons}
 
     if user_text == "[ri_force_weather]":
-        save_fact("current_route_interest", "nature")
+        save_fact(sid, "current_route_interest", "nature")
         route = DEMO_INTEREST_ROUTES["nature"]
         text = f"Ну смотри, ты сам выбрал! Одевайся потеплее.\n\nВот твой маршрут: {route['title']}\n\n" + "\n\n".join([s['text'] for s in route["steps"]])
         buttons = []
@@ -346,7 +358,7 @@ async def ask_bot(message: UserMessage):
         buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
         return {"answer": text, "action": "none", "buttons": buttons}
 
-    # 8. РЕСТОРАНЫ, ОТЕЛИ, МУЗЕИ (Используем новые картинки из IMAGE_MAP)
+    # 8. РЕСТОРАНЫ, ОТЕЛИ, МУЗЕИ
     if user_text.startswith("[ri_details:"):
         parts = user_text.replace("[ri_details:", "").replace("]", "").split(":", 1)
         category_key = parts[0] 
@@ -380,10 +392,11 @@ async def ask_bot(message: UserMessage):
                 first_place_name = route['steps'][0].get('place', route['steps'][0]['text'].split('—')[1].split('(')[0].strip())
                 buttons.append({"label": "📍 Всё круто, веди меня", "action": f"[route_choose:{first_place_name}]"})
             
-            return {"answer": answer, "action": "none", "image": get_image(item['name']), "buttons": buttons}
+            return {"answer": answer, "action": "none", "image": item["image"], "buttons": buttons}
 
     if user_text == "[delivery_start]":
         return {"answer": "Отличный выбор! Что будем заказывать?", "action": "none", "buttons": [{"label": "🍕 Пицца", "action": "[delivery_pizza]"}, {"label": "🍣 Роллы", "action": "[delivery_sushi]"}, {"label": "🛒 Продукты", "action": "[delivery_grocery]"}]}
+    
     if user_text.startswith("[delivery_"):
         key = user_text.replace("[delivery_", "").replace("]", "")
         place = DELIVERY_PLACES.get(key)
@@ -409,20 +422,20 @@ async def ask_bot(message: UserMessage):
             })
         return {"answer": "Вот проверенные отели Уфы:", "action": "show_cards", "cards": cards, "buttons": [{"label": "🏨 Все отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры", "action": "[housing_apartments]"}]}
 
+        # Карточки квартир — только «Подробнее» (исправлено)
     if user_text == "[housing_apartments]":
         cards = []
         for item in APARTMENTS:
-            taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
-            action_type = "auto" if transport == "машина" else "taxi"
+            amenities_preview = " · ".join(item.get("amenities", [])[:2]) if item.get("amenities") else ""
+            desc_line = f"{item['desc']}"
+            if amenities_preview:
+                desc_line += f"\n✨ {amenities_preview}..."
             cards.append({
                 "title": item["name"],
-                "desc": f"{item['desc']}\n📍 {item['address']}\n💰 {item['avg_check']}\n⭐ {item['rating']}",
+                "desc": f"{desc_line}\n📍 {item['address']}\n💰 {item['avg_check']}\n⭐ {item['rating']}",
                 "image": item["image"],
                 "buttons": [
-                    {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
-                    {"label": "💬 WhatsApp", "action": f"https://wa.me/{item['phone'].replace('+','')}", "type": "url"},
-                    {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
-                    {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"}
+                    {"label": "📖 Посмотреть подробнее", "action": f"[details_apartment:{item['name']}]"}
                 ]
             })
         return {"answer": "Вот квартиры от хозяев:", "action": "show_cards", "cards": cards, "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Все квартиры", "action": "[housing_apartments]"}]}
@@ -441,6 +454,26 @@ async def ask_bot(message: UserMessage):
                 {"label": "📞 Позвонить", "action": f"[call_phone:{item['phone']}]", "type": "url"},
                 {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
                 {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"}
+            ]}
+        # Детали квартиры с полным описанием и всеми кнопками решения
+    if user_text.startswith("[details_apartment:"):
+        name = user_text.replace("[details_apartment:", "").replace("]", "")
+        item = next((i for i in APARTMENTS if i["name"] == name), None)
+        if item:
+            taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
+            action_type = "auto" if transport == "машина" else "taxi"
+            
+            answer = f"**{item['name']}**\n\n{item['full_desc']}\n\n"
+            if item.get("amenities"):
+                answer += "Что есть в квартире:\n" + "\n".join([f"• {a}" for a in item["amenities"]]) + "\n\n"
+            answer += f"📍 {item['address']}\n💰 {item['avg_check']}\n⭐ Рейтинг: {item['rating']}"
+            
+            return {"answer": answer, "action": "none", "image": item["image"], "buttons": [
+                {"label": "📞 Позвонить хозяину", "action": f"[call_phone:{item['phone']}]", "type": "url"},
+                {"label": "💬 Написать в WhatsApp", "action": f"https://wa.me/{item['phone'].replace('+','')}", "type": "url"},
+                {"label": "🏠 Сделать моим адресом", "action": f"[set_home:{item['name']}]"},
+                {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
+                {"label": "← Вернуться к списку", "action": "[housing_apartments]"}
             ]}
 
     if user_text == "[food_start]":
@@ -463,7 +496,7 @@ async def ask_bot(message: UserMessage):
                 cards.append({
                     "title": item["name"],
                     "desc": f"{item['desc']}\n📍 {item['address']}\n🕒 {item['hours']}\n💰 Чек: {item['avg_check']}\n⭐ Рейтинг: {item['rating']}",
-                    "image": get_image(item['name']),
+                    "image": item["image"],
                     "buttons": [
                         {"label": "📖 Подробнее", "action": f"[details_rest:{key}:{item['name']}]"},
                         {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
@@ -492,7 +525,7 @@ async def ask_bot(message: UserMessage):
                 cards.append({
                     "title": item["name"],
                     "desc": f"{item['desc']}\n📍 {item['address']}\n🕒 {item['hours']}\n💰 {item['price']}\n⭐ Рейтинг: {item['rating']}",
-                    "image": get_image(item['name']),
+                    "image": item["image"],
                     "buttons": [
                         {"label": "📖 Подробнее", "action": f"[details_attr:{key}:{item['name']}]"},
                         {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
@@ -514,7 +547,7 @@ async def ask_bot(message: UserMessage):
         if item:
             taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
             action_type = "auto" if transport == "машина" else "taxi"
-            return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 {item['price']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": get_image(item['name']), "buttons": [
+            return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 {item['price']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": item["image"], "buttons": [
                 {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
                 {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
                 {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
@@ -527,7 +560,7 @@ async def ask_bot(message: UserMessage):
         if item:
             taxi_label = "🚗 На авто" if transport == "машина" else "🚕 Такси"
             action_type = "auto" if transport == "машина" else "taxi"
-            return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 Чек: {item['avg_check']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": get_image(item['name']), "buttons": [
+            return {"answer": f"**{item['name']}**\n\n{item['full_desc']}\n\n📍 {item['address']}\n🕒 {item['hours']}\n💰 Чек: {item['avg_check']}\n⭐ Рейтинг: {item['rating']}", "action": "none", "image": item["image"], "buttons": [
                 {"label": taxi_label, "action": f"[route:{action_type}:{item['name']}]"},
                 {"label": "🚌 Автобус", "action": f"[route:bus:{item['name']}]"},
                 {"label": "🚶 Пешком", "action": f"[route:walk:{item['name']}]"}
@@ -535,7 +568,7 @@ async def ask_bot(message: UserMessage):
 
     # 9. МАРШРУТЫ
     if user_text.startswith("[route:"):
-        clear_pending()
+        clear_pending(sid)
         raw_parts = user_text.replace("[route:", "").replace("]", "").split(":", 2)
         mode = raw_parts[0]
         if len(raw_parts) == 3:
@@ -544,25 +577,25 @@ async def ask_bot(message: UserMessage):
             name = raw_parts[1]
         else:
             return {"answer": "Не понял маршрут", "action": "none"}
-
+        
         if name == "Памятник Ленину перед Горсоветом":
             return {"answer": "Ты уже на месте! Памятник Ленину прямо перед тобой. Осмотрись и нажми 'Готово'.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
         route_data = DEMO_ROUTES.get(name)
         if route_data and mode in route_data:
             steps = route_data[mode]
-            save_pending("guide_route", f"{name}|{mode}|0")
+            save_pending(sid, "guide_route", f"{name}|{mode}|0")
+            log_event(sid, "route_started", {"destination": name, "mode": mode})
             return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {steps[0]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
         if mode in ["taxi", "auto"]:
             loc_str = facts.get("current_location", "")
             if not loc_str:
-                save_pending("wait_geo", name)
+                save_pending(sid, "wait_geo", name)
                 return {"answer": f"Чтобы построить маршрут до {name}, нажми на компас 🧭", "action": "none"}
             
             start_lat, start_lon = map(float, loc_str.split(','))
             end_lat, end_lon = geocode_address(name + ", Уфа")
-
             if end_lat:
                 if mode == "auto":
                     url = get_auto_map_link(start_lat, start_lon, end_lat, end_lon)
@@ -571,7 +604,6 @@ async def ask_bot(message: UserMessage):
                     url = get_taxi_link(start_lat, start_lon, end_lat, end_lon)
                     return {"answer": f"Маршрут до {name} построен.", "action": "show_card", "card": {"type": "taxi", "title": "🚕 Яндекс.Го", "text": name, "button": "Открыть Яндекс Go", "url": url}}
             return {"answer": "Не могу найти адрес.", "action": "none"}
-
         else: 
             start_name = home_addr if home_addr else "Текущее местоположение"
             found_route = None
@@ -583,11 +615,13 @@ async def ask_bot(message: UserMessage):
                     break
             
             if found_route:
-                save_pending("guide_route", f"{route_id}|bus|0")
+                save_pending(sid, "guide_route", f"{route_id}|bus|0")
+                log_event(sid, "route_started", {"destination": name, "mode": "city_bus"})
                 return {"answer": f"Отлично, я поведу тебя за руку до {name}. Шаг 1: {found_route[0]}\n\nНажми 'Готово', когда выполнишь.", "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
-
+            
             gpt_text = await generate_gpt_route(start_name, name, "автобусе" if mode == "bus" else "пешком")
-            save_pending("guide_route", f"{name}|{mode}|0")
+            save_pending(sid, "guide_route", f"{name}|{mode}|0")
+            log_event(sid, "route_started", {"destination": name, "mode": mode, "source": "gpt"})
             return {"answer": gpt_text, "action": "none", "buttons": [{"label": "✅ Готово", "action": "Готово"}]}
 
     if user_text.startswith("[transport:"):
@@ -604,8 +638,13 @@ async def ask_bot(message: UserMessage):
     # 10. ОНБОРДИНГ
     if "name" not in facts or facts.get("name") == "":
         if any(w in text_lower for w in ["заселиться", "жить", "где", "не знаю", "вещи", "отель", "квартир"]):
-            return {"answer": "Слушай, я пока не знаю, как тебя зовут. Но если тебе нужно жилье, я могу помочь! Как тебя зовут? (А чтобы посмотреть отели, нажми кнопку ниже)", "action": "none", "buttons": [{"label": "🏨 Где жить", "action": "[housing_start]"}]}
-
+            hint = "\n\nКстати, как тебя зовут? Буду обращаться по-человечески."
+            log_event(sid, "intent_detected", {"type": "housing"})
+            return {"answer": "Вот где можно остановиться в Уфе:" + hint, "action": "none", "buttons": [
+                {"label": "🏨 Отели", "action": "[housing_hotels]"},
+                {"label": "🏠 Квартиры", "action": "[housing_apartments]"}
+            ]}
+        
         words = re.findall(r'\b[А-Яа-яЁё]{2,}\b', user_text)
         stop_words = ["меня", "зовут", "зови", "это", "ну", "привет", "здравствуйте", "добрый", "день", "вечер", "утро", "знаю", "куда", "заселиться", "где", "жить"]
         words = [w for w in words if w.lower() not in stop_words]
@@ -616,7 +655,8 @@ async def ask_bot(message: UserMessage):
         name = words[-1].capitalize()
         
         if len(name) <= 30 and name.lower() not in NAME_BLACKLIST:
-            save_fact("name", name)
+            save_fact(sid, "name", name)
+            log_event(sid, "onboarding_step", {"step": "name_saved", "value": name})
             return {"answer": RESPONSES["onboarding_ask_city"].format(name=name), "action": "none"}
         return {"answer": "Слушай, напиши просто свое имя (например: Иван).", "action": "none"}
 
@@ -624,7 +664,8 @@ async def ask_bot(message: UserMessage):
         found_city = find_city(user_text)
         
         if found_city:
-            save_fact("from_city", found_city.capitalize())
+            save_fact(sid, "from_city", found_city.capitalize())
+            log_event(sid, "onboarding_step", {"step": "city_saved", "value": found_city})
             reaction = CITY_REACTIONS.get(found_city)
             if reaction:
                 return {"answer": f"{reaction} А как вы до нас добрались? На поезде, на самолете, на машине или на автобусе?", "action": "none"}
@@ -642,13 +683,13 @@ async def ask_bot(message: UserMessage):
         elif any(w in text_lower for w in ["машин", "авто", "руле", "водител", "приехал на колесах"]): new_transport = "машина"
         
         if new_transport:
-            save_fact("transport", new_transport)
+            save_fact(sid, "transport", new_transport)
+            log_event(sid, "onboarding_step", {"step": "transport_saved", "value": new_transport})
             return {"answer": RESPONSES["onboarding_ask_destination"], "action": "none"}
         else:
             return {"answer": "Не совсем понял. Ты приехал на поезде, на самолете, на машине или на автобусе?", "action": "none"}
 
     if "home_address" not in facts:
-        # ✅ ИСПРАВЛЕНО: Убрали len(user_text.split()) < 4, чтобы "Азимут" не считался "не знаю"
         if any(w in text_lower for w in ["не знаю", "куда-нибудь", "куда-то", "вещи", "заселиться", "где жить", "где остановиться", "поспать"]):
              return {"answer": "Понял, тебе нужно жилье. Вот варианты, где можно остановиться:", "action": "none", "buttons": [{"label": "🏨 Отели", "action": "[housing_hotels]"}, {"label": "🏠 Квартиры посуточно", "action": "[housing_apartments]"}]}
 
@@ -659,7 +700,8 @@ async def ask_bot(message: UserMessage):
         if len(clean_address) < 2:
             clean_address = user_text
 
-        save_fact("home_address", clean_address)
+        save_fact(sid, "home_address", clean_address)
+        log_event(sid, "onboarding_complete", {"home": clean_address})
         transport = facts.get("transport", "неизвестно")
         care_msg = ""
         
@@ -672,7 +714,7 @@ async def ask_bot(message: UserMessage):
         
         if transport == "машина":
             if not facts.get("current_location"):
-                save_pending("wait_geo", clean_address)
+                save_pending(sid, "wait_geo", clean_address)
                 return {"answer": f"Отлично, запомнила: {clean_address}. {care_msg} Нажми на компас 🧭, чтобы я построила маршрут.", "action": "none"}
             
             loc = facts.get("current_location").split(',')
@@ -683,7 +725,7 @@ async def ask_bot(message: UserMessage):
             else:
                 return {"answer": "Запомнила адрес, но не вижу тебя. Нажми на компас 🧭!", "action": "none"}
         else:
-            save_pending("wait_transport_choice", clean_address)
+            save_pending(sid, "wait_transport_choice", clean_address)
             return {"answer": f"Отлично, запомнила: {clean_address}. {care_msg} Как поедем до отеля?", "action": "none", "buttons": [
                 {"label": "🚕 Такси", "action": f"[route:taxi:{clean_address}]"},
                 {"label": "🚌 Автобус", "action": f"[route:bus:{clean_address}]"},
@@ -693,7 +735,7 @@ async def ask_bot(message: UserMessage):
     if any(word in text_lower for word in ["домой", "дом", "обратно", "в отель"]):
         loc_str = facts.get("current_location", "")
         if not loc_str: 
-            save_pending("wait_geo", "домой")
+            save_pending(sid, "wait_geo", "домой")
             return {"answer": "Я не знаю, где ты. Нажми на компас 🧭, чтобы я нашла тебя.", "action": "none"}
         saved_addr = facts.get("home_address")
         if saved_addr:
@@ -702,13 +744,13 @@ async def ask_bot(message: UserMessage):
                 {"label": "🚌 Автобус", "action": f"[route:bus:{saved_addr}]"},
                 {"label": "🚶 Пешком", "action": f"[route:walk:{saved_addr}]"}
             ]}
-        save_pending("ask_home_address", "")
+        save_pending(sid, "ask_home_address", "")
         return {"answer": "А где ты остановился? Назови отель или точный адрес.", "action": "none"}
 
-    pending = get_pending()
+    pending = get_pending(sid)
     if pending and pending.get("action") == "ask_home_address":
-        clear_pending()
-        save_fact("home_address", user_text)
+        clear_pending(sid)
+        save_fact(sid, "home_address", user_text)
         return {"answer": f"Отлично, запомнила: {user_text}. Как поедем туда?", "action": "none", "buttons": [
             {"label": "🚕 Такси", "action": f"[route:taxi:{user_text}]"},
             {"label": "🚌 Автобус", "action": f"[route:bus:{user_text}]"},
@@ -719,7 +761,7 @@ async def ask_bot(message: UserMessage):
     try:
         loop = asyncio.get_running_loop()
         intent = await loop.run_in_executor(None, ask_uje_router, user_text, facts, message.history)
-        for k, v in intent.get("new_facts", {}).items(): save_fact(k, v)
+        for k, v in intent.get("new_facts", {}).items(): save_fact(sid, k, v)
         
         reply_text = intent.get("params", {}).get("reply", "").strip()
         if not reply_text:
